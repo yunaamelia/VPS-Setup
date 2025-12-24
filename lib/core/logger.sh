@@ -21,17 +21,28 @@ readonly LOG_LEVEL_INFO=1
 readonly LOG_LEVEL_WARNING=2
 readonly LOG_LEVEL_ERROR=3
 
-# Colors for terminal output
+# Colors for terminal output (UX-020: Consistent color coding)
 readonly COLOR_RESET='\033[0m'
-readonly COLOR_DEBUG='\033[36m'    # Cyan
-readonly COLOR_INFO='\033[32m'     # Green
-readonly COLOR_WARNING='\033[33m'  # Yellow
-readonly COLOR_ERROR='\033[31m'    # Red
+readonly COLOR_DEBUG='\033[36m'    # Cyan (Blue/Cyan for Info/Progress)
+readonly COLOR_INFO='\033[32m'     # Green (Success)
+readonly COLOR_WARNING='\033[33m'  # Yellow (Warning)
+readonly COLOR_ERROR='\033[31m'    # Red (Error)
 readonly COLOR_BOLD='\033[1m'
+
+# Text labels for accessibility (UX-021: No critical info solely by color)
+readonly LABEL_DEBUG="[DEBUG]"
+readonly LABEL_INFO="[OK]"       # Success indicator
+readonly LABEL_WARNING="[WARN]"  # Warning indicator
+readonly LABEL_ERROR="[ERR]"     # Error indicator
+readonly LABEL_FATAL="[FATAL]"   # Fatal error indicator
 
 # Current log level (default: INFO)
 LOG_LEVEL="${LOG_LEVEL:-INFO}"
+# UX-019: Support for --plain/--no-color mode
 ENABLE_COLORS="${ENABLE_COLORS:-true}"
+if [[ "${NO_COLOR:-}" == "1" ]] || [[ "${NO_COLOR:-}" == "true" ]]; then
+  ENABLE_COLORS="false"
+fi
 
 # Initialize logging system
 # Creates log directory and files with proper permissions
@@ -74,7 +85,7 @@ _get_log_level_value() {
   esac
 }
 
-# Format log message with timestamp and level
+# Format log message with timestamp, level, and text label
 # Args: $1 - log level, $2 - message
 # Returns: formatted log message
 _format_log_message() {
@@ -83,7 +94,18 @@ _format_log_message() {
   local timestamp
   timestamp=$(date '+%Y-%m-%d %H:%M:%S')
   
-  echo "[$timestamp] [$level] $message"
+  # UX-021: Add text labels for accessibility
+  local label
+  case "${level^^}" in
+    DEBUG)   label="$LABEL_DEBUG" ;;
+    INFO)    label="$LABEL_INFO" ;;
+    WARNING) label="$LABEL_WARNING" ;;
+    ERROR)   label="$LABEL_ERROR" ;;
+    FATAL)   label="$LABEL_FATAL" ;;
+    *)       label="[$level]" ;;
+  esac
+  
+  echo "[$timestamp] $label $message"
 }
 
 # Write log message to file and console
@@ -103,6 +125,9 @@ _log_message() {
     return 0
   fi
   
+  # Auto-redact message (SEC-003)
+  message=$(log_redact "$message")
+  
   local formatted_message
   formatted_message=$(_format_log_message "$level" "$message")
   
@@ -111,11 +136,11 @@ _log_message() {
     echo "$formatted_message" >> "$LOG_FILE"
   fi
   
-  # Write to console with optional colors
-  if [[ "$ENABLE_COLORS" == "true" ]] && [[ -n "$color" ]] && [[ -t 1 ]]; then
-    echo -e "${color}${formatted_message}${COLOR_RESET}"
+  # Write to console with optional colors (always to stderr)
+  if [[ "$ENABLE_COLORS" == "true" ]] && [[ -n "$color" ]] && [[ -t 2 ]]; then
+    echo -e "${color}${formatted_message}${COLOR_RESET}" >&2
   else
-    echo "$formatted_message"
+    echo "$formatted_message" >&2
   fi
 }
 
@@ -212,6 +237,58 @@ log_section() {
   log_separator "="
   log_info "${COLOR_BOLD}${title}${COLOR_RESET}"
   log_separator "="
+}
+
+# Redact sensitive information from strings (UX-024)
+# Args: $1 - text potentially containing sensitive data
+# Output: text with sensitive patterns replaced with [REDACTED]
+log_redact() {
+  local text="$1"
+  
+  # Patterns to redact (case-insensitive)
+  # Password patterns
+  text=$(echo "$text" | sed -E 's/(password[=: ]+)[^ ]*/\1[REDACTED]/gi')
+  text=$(echo "$text" | sed -E 's/(passwd[=: ]+)[^ ]*/\1[REDACTED]/gi')
+  text=$(echo "$text" | sed -E 's/(pwd[=: ]+)[^ ]*/\1[REDACTED]/gi')
+  
+  # API key patterns
+  text=$(echo "$text" | sed -E 's/(api[_-]?key[=: ]+)[^ ]*/\1[REDACTED]/gi')
+  text=$(echo "$text" | sed -E 's/(apikey[=: ]+)[^ ]*/\1[REDACTED]/gi')
+  text=$(echo "$text" | sed -E 's/(access[_-]?key[=: ]+)[^ ]*/\1[REDACTED]/gi')
+  text=$(echo "$text" | sed -E 's/(secret[_-]?key[=: ]+)[^ ]*/\1[REDACTED]/gi')
+  
+  # Token patterns
+  text=$(echo "$text" | sed -E 's/(token[=: ]+)[^ ]*/\1[REDACTED]/gi')
+  text=$(echo "$text" | sed -E 's/(auth[=: ]+)[^ ]*/\1[REDACTED]/gi')
+  text=$(echo "$text" | sed -E 's/(bearer[=: ]+)[^ ]*/\1[REDACTED]/gi')
+  
+  # SSH key patterns
+  text=$(echo "$text" | sed -E 's/(ssh[_-]?key[=: ]+)[^ ]*/\1[REDACTED]/gi')
+  text=$(echo "$text" | sed -E 's/(private[_-]?key[=: ]+)[^ ]*/\1[REDACTED]/gi')
+  
+  # Connection string patterns
+  text=$(echo "$text" | sed -E 's/([a-z]+:\/\/[^:]+:)([^@]+)(@)/\1[REDACTED]\3/gi')
+  
+  echo "$text"
+}
+
+# Log with automatic redaction (UX-024)
+# Args: $1 - log level, $@ - message
+log_redacted() {
+  local level="$1"
+  shift
+  local message="$*"
+  local redacted_message
+  redacted_message=$(log_redact "$message")
+  
+  case "${level^^}" in
+    DEBUG)   log_debug "$redacted_message" ;;
+    INFO)    log_info "$redacted_message" ;;
+    WARNING) log_warning "$redacted_message" ;;
+    ERROR)   log_error "$redacted_message" ;;
+    FATAL)   log_fatal "$redacted_message" ;;
+    *)       _log_message "$level" "$redacted_message" ;;
+  esac
 }
 
 # Export functions for use in other scripts

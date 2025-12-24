@@ -55,6 +55,23 @@ DESCRIPTION:
     fully-functional developer workstation with desktop environment, RDP access,
     multiple IDEs, and development tools.
 
+QUICK START:
+    For most users, simply run:
+        vps-provision
+    
+    The tool will:
+    1. Validate system requirements (Debian 13, disk space, RAM)
+    2. Install XFCE desktop environment
+    3. Configure RDP server on port 3389
+    4. Create developer user with sudo privileges
+    5. Install VSCode, Cursor, and Antigravity IDEs
+    6. Configure terminal enhancements
+    7. Install development tools (git, build-essential, etc.)
+    
+    Total time: ~15 minutes on 4GB RAM / 2 vCPU droplet
+    
+    After completion, connect via RDP using the displayed credentials.
+
 OPTIONS:
     -h, --help              Display this help message
     -v, --version           Display version information
@@ -115,20 +132,29 @@ EXAMPLES:
     # Basic provisioning with defaults
     vps-provision
     
-    # Dry run to preview actions
+    # Dry run to preview actions without making changes
     vps-provision --dry-run
     
-    # Resume after failure
+    # Resume provisioning after a failure from last checkpoint
     vps-provision --resume
     
-    # Custom username with debug logging
+    # Force complete re-provisioning (ignore all checkpoints)
+    vps-provision --force
+    
+    # Custom username with debug logging for troubleshooting
     vps-provision --username alice --log-level DEBUG
     
-    # Install only VSCode and Cursor
+    # Install only specific IDEs (VSCode and Cursor, skip Antigravity)
     vps-provision --only-phase ide-vscode --only-phase ide-cursor
     
-    # JSON output for automation
-    vps-provision --output-format json > result.json
+    # Skip desktop installation (for server-only setup)
+    vps-provision --skip-phase desktop-install --skip-phase rdp-config
+    
+    # Automated/CI mode with JSON output for parsing
+    vps-provision --yes --output-format json > result.json
+    
+    # Non-interactive mode with plain text (no colors)
+    vps-provision --yes --no-color --log-level WARNING
 
 ENVIRONMENT VARIABLES:
     VPS_PROVISION_CONFIG     Override default config file location
@@ -405,6 +431,8 @@ main() {
   log_info "Initializing provisioning session..."
   local session_id
   session_id=$(state_init_session)
+  # Load session state into current shell context (since init ran in subshell)
+  state_load_session "${session_id}"
   log_info "Session ID: ${session_id}"
   
   # Update session status
@@ -506,7 +534,7 @@ main() {
       
       # Check for existing checkpoint
       if checkpoint_exists "${phase}"; then
-        checkpoint_exists=true
+
         if [[ "${FORCE_MODE}" == "true" ]]; then
           status="WILL RUN"
           notes="(forced, checkpoint exists)"

@@ -25,8 +25,7 @@ source "${SCRIPT_DIR}/logger.sh"
 
 # Error severity levels
 readonly E_SEVERITY_CRITICAL="CRITICAL"
-readonly E_SEVERITY_RETRYABLE="RETRYABLE"
-readonly E_SEVERITY_WARNING="WARNING"
+
 
 # Error types
 readonly E_NETWORK="E_NETWORK"
@@ -364,39 +363,7 @@ execute_with_circuit_breaker() {
   return 1
 }
 
-# Get suggested action for error type
-# Args: $1 - error type
-# Returns: suggested action message
-error_get_suggestion() {
-  local error_type="$1"
-  
-  case "$error_type" in
-    "$E_NETWORK")
-      echo "Check network connectivity, verify DNS resolution, retry operation"
-      ;;
-    "$E_DISK")
-      echo "Free up disk space, check df -h, run apt-get clean"
-      ;;
-    "$E_LOCK")
-      echo "Wait for other package manager to finish, or remove stale lock files"
-      ;;
-    "$E_PKG_CORRUPT")
-      echo "Clear package cache (apt-get clean), update package lists, retry"
-      ;;
-    "$E_PERMISSION")
-      echo "Check file permissions, ensure running with appropriate privileges"
-      ;;
-    "$E_NOT_FOUND")
-      echo "Verify command/file exists, check PATH variable, install missing package"
-      ;;
-    "$E_TIMEOUT")
-      echo "Increase timeout value, check system resources, retry operation"
-      ;;
-    *)
-      echo "Review error output, check logs for details, consult documentation"
-      ;;
-  esac
-}
+
 
 # Wrapper function for safe command execution with all protections
 # Args: $1 - command, $2 - description, $3 - retry count (optional)

@@ -27,6 +27,7 @@ source "${SCRIPT_DIR}/logger.sh"
 # Global UX settings
 UX_YES_MODE="${UX_YES_MODE:-false}"  # --yes flag bypasses prompts
 UX_INTERACTIVE="${UX_INTERACTIVE:-true}"  # UX-017: detect non-interactive shells
+UX_TERMINAL_WIDTH="${UX_TERMINAL_WIDTH:-80}"  # UX-018: default to 80 chars
 
 # Detect if running in non-interactive shell (CI/CD)
 ux_detect_interactive() {
@@ -34,6 +35,192 @@ ux_detect_interactive() {
     UX_INTERACTIVE=false
     log_debug "Non-interactive shell detected, disabling prompts"
   fi
+}
+
+# Detect terminal width (UX-018: restrict output to 80 chars or detect width)
+ux_detect_terminal_width() {
+  if [[ -t 1 ]]; then
+    # Terminal is a TTY, detect width
+    if command -v tput &> /dev/null; then
+      UX_TERMINAL_WIDTH=$(tput cols 2>/dev/null || echo "${COLUMNS:-80}")
+    elif [[ -n "${COLUMNS:-}" ]]; then
+      UX_TERMINAL_WIDTH="${COLUMNS}"
+    else
+      UX_TERMINAL_WIDTH=80
+    fi
+  else
+    # Not a TTY, check COLUMNS or use default
+    if [[ -n "${COLUMNS:-}" ]]; then
+      UX_TERMINAL_WIDTH="${COLUMNS}"
+    else
+      UX_TERMINAL_WIDTH=80
+    fi
+  fi
+  
+  # Ensure minimum width
+  if [[ ${UX_TERMINAL_WIDTH} -lt 40 ]]; then
+    UX_TERMINAL_WIDTH=80
+  fi
+  
+  log_debug "Terminal width detected: ${UX_TERMINAL_WIDTH} columns"
+}
+
+# Wrap text to terminal width (UX-018)
+# Args: $1 - text to wrap, $2 - indent level (optional, default 0)
+# Output: wrapped text to stdout
+ux_wrap_text() {
+  local text="$1"
+  local indent="${2:-0}"
+  local width=$((UX_TERMINAL_WIDTH - indent))
+  
+  if [[ ${width} -lt 20 ]]; then
+    width=40  # Minimum readable width
+  fi
+  
+  # Use fold or fmt if available, otherwise just output as-is
+  if command -v fold &> /dev/null; then
+    local indent_str
+    indent_str=$(printf '%*s' "$indent" '')
+    echo "$text" | fold -w "$width" -s | sed "s/^/${indent_str}/"
+  elif command -v fmt &> /dev/null; then
+    local indent_str
+    indent_str=$(printf '%*s' "$indent" '')
+    echo "$text" | fmt -w "$width" | sed "s/^/${indent_str}/"
+  else
+    echo "$text"
+  fi
+}
+
+# Prompt for interactive input (UX-014: interactive prompts for missing arguments)
+# Args: $1 - prompt message, $2 - default value (optional), $3 - validation function (optional)
+# Output: user input to stdout
+# Returns: 0 on success, 1 on failure
+ux_prompt_input() {
+  local prompt="$1"
+  local default="${2:-}"
+  local validation_func="${3:-}"
+  local response
+  
+  # UX-017: Cannot prompt in non-interactive mode
+  if [[ "${UX_INTERACTIVE}" == "false" ]]; then
+    log_error "Cannot prompt for input in non-interactive shell"
+    if [[ -n "$default" ]]; then
+      echo "$default"
+      return 0
+    else
+      return 1
+    fi
+  fi
+  
+  # Display prompt
+  if [[ -n "$default" ]]; then
+    echo -n "${prompt} [${default}]: " >&2
+  else
+    echo -n "${prompt}: " >&2
+  fi
+  
+  # Read user input
+  read -r response
+  
+  # Use default if empty
+  if [[ -z "$response" && -n "$default" ]]; then
+    response="$default"
+  fi
+  
+  # Validate if function provided
+  if [[ -n "$validation_func" ]]; then
+    if ! "$validation_func" "$response"; then
+      log_error "Invalid input, please try again"
+      return 1
+    fi
+  fi
+  
+  echo "$response"
+  return 0
+}
+
+# Prompt for password with hidden input (UX-014)
+# Args: $1 - prompt message
+# Output: password to stdout
+# Returns: 0 on success, 1 on failure
+ux_prompt_password() {
+  local prompt="$1"
+  local password
+  
+  # UX-017: Cannot prompt in non-interactive mode
+  if [[ "${UX_INTERACTIVE}" == "false" ]]; then
+    log_error "Cannot prompt for password in non-interactive shell"
+    return 1
+  fi
+  
+  # Display prompt and read password (hidden)
+  echo -n "${prompt}: " >&2
+  read -rs password
+  echo "" >&2  # newline after hidden input
+  
+  if [[ -z "$password" ]]; then
+    log_error "Password cannot be empty"
+    return 1
+  fi
+  
+  echo "$password"
+  return 0
+}
+
+# Prompt for confirmation yes/no (UX-014)
+# Args: $1 - prompt message, $2 - default (y/n, optional)
+# Returns: 0 for yes, 1 for no
+ux_prompt_confirm() {
+  local prompt="$1"
+  local default="${2:-}"
+  local response
+  
+  # UX-017: Cannot prompt in non-interactive mode or with --yes flag
+  if [[ "${UX_YES_MODE}" == "true" ]]; then
+    log_debug "Auto-confirming (--yes mode): $prompt"
+    return 0
+  fi
+  
+  if [[ "${UX_INTERACTIVE}" == "false" ]]; then
+    log_error "Cannot prompt for confirmation in non-interactive shell"
+    return 1
+  fi
+  
+  # Display prompt with default indication
+  if [[ "$default" == "y" ]]; then
+    echo -n "${prompt} [Y/n]: " >&2
+  elif [[ "$default" == "n" ]]; then
+    echo -n "${prompt} [y/N]: " >&2
+  else
+    echo -n "${prompt} [y/n]: " >&2
+  fi
+  
+  read -r response
+  
+  # Use default if empty
+  if [[ -z "$response" && -n "$default" ]]; then
+    response="$default"
+  fi
+  
+  # Parse response
+  case "${response,,}" in
+    y|yes)
+      return 0
+      ;;
+    n|no)
+      return 1
+      ;;
+    *)
+      if [[ "$default" == "y" ]]; then
+        return 0
+      elif [[ "$default" == "n" ]]; then
+        return 1
+      else
+        log_error "Invalid response, please enter 'y' or 'n'"
+        return 1
+      fi
+      ;;
+  esac
 }
 
 # Confirm action with user (UX-009: confirmation prompts for destructive operations)
@@ -87,16 +274,16 @@ show_success_banner() {
   
   log_separator "="
   log_info ""
-  log_info "╔═══════════════════════════════════════════════════════════════════════════╗"
-  log_info "║                                                                           ║"
-  log_info "║                          PROVISIONING SUCCESSFUL                          ║"
-  log_info "║                                                                           ║"
-  log_info "╚═══════════════════════════════════════════════════════════════════════════╝"
+  log_info "=============================================================================="
+  log_info "                                                                              "
+  log_info "                       [OK] PROVISIONING SUCCESSFUL                           "
+  log_info "                                                                              "
+  log_info "=============================================================================="
   log_info ""
   log_info "Your VPS developer workstation is ready!"
   log_info ""
   log_info "CONNECTION DETAILS (copy-paste ready):"
-  log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  log_info "------------------------------------------------------------------------------"
   log_info ""
   log_info "  RDP Connection:"
   log_info "    Host:     ${ip_address}"
@@ -104,12 +291,12 @@ show_success_banner() {
   log_info "    Username: ${username}"
   log_info "    Password: [REDACTED]"
   log_info ""
-  log_info "  ⚠️  IMPORTANT: Change your password on first login!"
+  log_info "  [WARN] IMPORTANT: Change your password on first login!"
   log_info ""
   log_info "  Connection String (for RDP clients):"
   log_info "    ${username}@${ip_address}:${rdp_port}"
   log_info ""
-  log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  log_info "------------------------------------------------------------------------------"
   log_info ""
   log_info "INSTALLED IDEs:"
   log_info "  • Visual Studio Code"
@@ -306,7 +493,8 @@ show_error() {
 # Initialize UX system
 ux_init() {
   ux_detect_interactive
-  log_debug "UX system initialized (interactive: ${UX_INTERACTIVE})"
+  ux_detect_terminal_width
+  log_debug "UX system initialized (interactive: ${UX_INTERACTIVE}, width: ${UX_TERMINAL_WIDTH})"
 }
 
 # Export functions

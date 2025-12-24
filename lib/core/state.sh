@@ -25,7 +25,7 @@ source "${SCRIPT_DIR}/logger.sh"
 source "${SCRIPT_DIR}/config.sh"
 
 # State directory paths
-readonly STATE_DIR="/var/vps-provision"
+readonly STATE_DIR="${VPS_PROVISION_STATE_DIR:-/var/vps-provision}"
 readonly SESSIONS_DIR="${STATE_DIR}/sessions"
 readonly CHECKPOINTS_DIR="${STATE_DIR}/checkpoints"
 readonly CHECKPOINT_METADATA="${CHECKPOINTS_DIR}/metadata.json"

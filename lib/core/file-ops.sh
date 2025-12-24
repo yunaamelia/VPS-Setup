@@ -26,7 +26,8 @@ source "${SCRIPT_DIR}/logger.sh"
 
 # Temporary directory for atomic operations
 readonly TEMP_DIR="/tmp/vps-provision"
-readonly BACKUP_DIR="/var/vps-provision/backups"
+readonly TEMP_DIR="${TEMP_DIR:-/tmp/vps-provision}"
+readonly BACKUP_DIR="${BACKUP_DIR:-/var/vps-provision/backups}"
 
 # Temp file tracking
 declare -a TEMP_FILES=()

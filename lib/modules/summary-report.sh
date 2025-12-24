@@ -12,6 +12,7 @@ LIB_DIR="$(dirname "$SCRIPT_DIR")"
 
 # shellcheck disable=SC1091
 source "${LIB_DIR}/core/logger.sh"
+# shellcheck source=lib/core/ux.sh
 source "${LIB_DIR}/core/ux.sh"
 
 readonly REPORT_DIR="/var/vps-provision/reports"

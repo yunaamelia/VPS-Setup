@@ -12,8 +12,15 @@ readonly _PROGRESS_SH_LOADED=1
 
 # Source logger for output
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="$(dirname "${SCRIPT_DIR}")"
 # shellcheck source=lib/core/logger.sh
 source "${SCRIPT_DIR}/logger.sh"
+
+# Source performance monitoring utilities (T130)
+if [[ -f "${LIB_DIR}/utils/performance-monitor.sh" ]]; then
+  # shellcheck source=lib/utils/performance-monitor.sh
+  source "${LIB_DIR}/utils/performance-monitor.sh"
+fi
 
 # Progress tracking variables
 TOTAL_PHASES=10
@@ -22,6 +29,11 @@ PHASE_START_TIME=0
 OVERALL_START_TIME=0
 PHASE_NAME=""
 LAST_UPDATE_TIME=0
+
+# Phase timing tracking (T130 - Performance Instrumentation)
+declare -gA PHASE_START_TIMES
+declare -gA PHASE_END_TIMES
+declare -gA PHASE_DURATIONS
 
 # Phase weight configuration (for more accurate time estimation - UX-002)
 # Weights represent relative complexity/duration of each phase
@@ -42,9 +54,11 @@ declare -gA PHASE_WEIGHTS=(
 PROGRESS_STATE_FILE="${PROGRESS_STATE_FILE:-/var/vps-provision/progress.state}"
 PROGRESS_STATE_DIR="$(dirname "${PROGRESS_STATE_FILE}")"
 
-# Visual indicators
-readonly SPINNER_CHARS='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+# Visual indicators (UX-022: Avoid complex ASCII art for critical info)
+# Using simple text-based indicators that work with screen readers
+readonly SPINNER_CHARS='-\\|/'  # Simple rotation instead of complex Unicode
 SPINNER_PID=0
+
 
 # UX Enhancement: Color codes for visual hierarchy (UX-004, UX-020)
 # Note: Using PROGRESS_COLOR_* prefix to avoid conflicts with logger.sh colors
@@ -100,8 +114,14 @@ progress_start_phase() {
   PHASE_NAME="$phase_name"
   PHASE_START_TIME=$(date +%s)
   
+  # T130: Record phase start time for performance tracking
+  local phase_key
+  phase_key=$(echo "$phase_name" | tr '[:upper:] ' '[:lower:]-')
+  PHASE_START_TIMES["$phase_key"]="$PHASE_START_TIME"
+  
   log_info "Phase $phase_num/$TOTAL_PHASES: $phase_name"
   log_debug "Phase started at: $(date)"
+  log_debug "Phase start timestamp: $PHASE_START_TIME"
   
   # UX-005: Persist state on phase change
   progress_save_state "$PROGRESS_STATE_FILE"
@@ -118,14 +138,29 @@ progress_complete_phase() {
   phase_end_time=$(date +%s)
   phase_duration=$((phase_end_time - PHASE_START_TIME))
   
-  # UX-006: Check if phase exceeded estimated duration by 50%
+  # T130: Record phase end time and duration for performance tracking
   phase_key=$(echo "$PHASE_NAME" | tr '[:upper:] ' '[:lower:]-')
+  PHASE_END_TIMES["$phase_key"]="$phase_end_time"
+  PHASE_DURATIONS["$phase_key"]="$phase_duration"
+  
+  # Log timing to performance monitor if available (T130)
+  if declare -f perf_monitor_log_timing &>/dev/null; then
+    perf_monitor_log_timing "$phase_key" "$phase_duration" "success"
+  fi
+  
+  # UX-006: Check if phase exceeded estimated duration by 50%
   if [[ -n "${PHASE_ESTIMATES[$phase_key]:-}" ]]; then
     local estimate="${PHASE_ESTIMATES[$phase_key]}"
     progress_check_duration_warning "$phase_duration" "$estimate"
+    
+    # T134: Check against performance thresholds and alert
+    if declare -f perf_monitor_check_phase_duration &>/dev/null; then
+      perf_monitor_check_phase_duration "$phase_key" "$phase_duration" "$estimate" || true
+    fi
   fi
   
   log_info "Phase $phase_num completed in $(progress_format_duration "$phase_duration")"
+  log_debug "Phase end timestamp: $phase_end_time, Duration: ${phase_duration}s"
   
   # UX-005: Persist completion state
   progress_save_state "$PROGRESS_STATE_FILE"
@@ -225,8 +260,9 @@ progress_show_bar() {
   filled_length=$((percentage * bar_length / 100))
   empty_length=$((bar_length - filled_length))
   
-  bar=$(printf '%*s' "$filled_length" "" | tr ' ' '█')
-  bar+=$(printf '%*s' "$empty_length" "" | tr ' ' '░')
+  # UX-022: Use simple ASCII characters instead of Unicode for accessibility
+  bar=$(printf '%*s' "$filled_length" "" | tr ' ' '=')
+  bar+=$(printf '%*s' "$empty_length" "" | tr ' ' '-')
   
   echo -ne "\r[${bar}] ${percentage}%"
 }
@@ -536,4 +572,169 @@ progress_format_phase() {
   else
     echo "${prefix} Phase ${phase_num}: ${phase_name}"
   fi
+}
+#######################################
+# Get phase timing data (T130 - Performance Instrumentation)
+# Returns phase start, end, and duration times
+# Arguments:
+#   $1 - Phase name (e.g., "system-prep")
+# Outputs:
+#   Writes timing data to stdout in format: "start end duration"
+# Returns:
+#   0 if data found, 1 if not
+#######################################
+progress_get_phase_timing() {
+  local phase_key="$1"
+  
+  local start="${PHASE_START_TIMES[$phase_key]:-0}"
+  local end="${PHASE_END_TIMES[$phase_key]:-0}"
+  local duration="${PHASE_DURATIONS[$phase_key]:-0}"
+  
+  if [[ $start -eq 0 ]]; then
+    return 1
+  fi
+  
+  echo "$start $end $duration"
+  return 0
+}
+
+#######################################
+# Get all phase timing data (T130)
+# Outputs complete timing report for all phases
+# Returns:
+#   0 on success
+#######################################
+progress_get_all_timings() {
+  log_info "Phase Timing Summary:"
+  log_separator "-"
+  
+  local total_duration=0
+  local phase_count=0
+  
+  for phase_key in system-prep desktop-install rdp-config user-creation ide-vscode ide-cursor ide-antigravity terminal-setup dev-tools verification; do
+    if [[ -n "${PHASE_DURATIONS[$phase_key]:-}" ]]; then
+      local duration="${PHASE_DURATIONS[$phase_key]}"
+      local estimate="${PHASE_ESTIMATES[$phase_key]:-0}"
+      local variance=""
+      
+      if [[ $estimate -gt 0 ]]; then
+        local pct
+        pct=$(awk "BEGIN {printf \"%.0f\", (($duration - $estimate) / $estimate) * 100}")
+        variance=" (${pct}% vs estimate)"
+      fi
+      
+      log_info "  $phase_key: $(progress_format_duration "$duration")$variance"
+      total_duration=$((total_duration + duration))
+      phase_count=$((phase_count + 1))
+    fi
+  done
+  
+  log_separator "-"
+  log_info "Total: $(progress_format_duration "$total_duration") across $phase_count phases"
+  
+  # Performance score calculation (T136)
+  if [[ $total_duration -gt 0 ]]; then
+    local target=900  # 15 minutes target
+    local score
+    score=$(awk "BEGIN {printf \"%.1f\", (100.0 * $target) / $total_duration}")
+    
+    # Cap score at 100
+    if (( $(echo "$score > 100" | bc -l) )); then
+      score=100
+    fi
+    
+    log_info "Performance Score: ${score}% (target: 15min, actual: $(progress_format_duration "$total_duration"))"
+  fi
+}
+
+#######################################
+# Export timing data to JSON (T141)
+# Creates JSON performance report with all metrics
+# Arguments:
+#   $1 - Output file path (optional, defaults to performance-report.json)
+# Returns:
+#   0 on success, 1 on failure
+#######################################
+progress_export_timing_json() {
+  local output_file="${1:-/var/log/vps-provision/performance-report.json}"
+  local output_dir
+  output_dir=$(dirname "$output_file")
+  
+  # Ensure output directory exists
+  if [[ ! -d "$output_dir" ]]; then
+    mkdir -p "$output_dir" 2>/dev/null || {
+      log_error "Failed to create output directory: $output_dir"
+      return 1
+    }
+  fi
+  
+  log_info "Exporting timing data to: $output_file"
+  
+  local timestamp
+  timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  
+  local total_duration=0
+  for duration in "${PHASE_DURATIONS[@]}"; do
+    total_duration=$((total_duration + duration))
+  done
+  
+  local target=900
+  local performance_score
+  if [[ $total_duration -gt 0 ]]; then
+    performance_score=$(awk "BEGIN {printf \"%.1f\", (100.0 * $target) / $total_duration}")
+    if (( $(echo "$performance_score > 100" | bc -l) )); then
+      performance_score=100
+    fi
+  else
+    performance_score=0
+  fi
+  
+  # Build phases JSON array
+  local phases_json="["
+  local first=true
+  
+  for phase_key in system-prep desktop-install rdp-config user-creation ide-vscode ide-cursor ide-antigravity terminal-setup dev-tools verification; do
+    if [[ -n "${PHASE_DURATIONS[$phase_key]:-}" ]]; then
+      local duration="${PHASE_DURATIONS[$phase_key]}"
+      local estimate="${PHASE_ESTIMATES[$phase_key]:-0}"
+      local variance=0
+      
+      if [[ $estimate -gt 0 ]]; then
+        variance=$(awk "BEGIN {printf \"%.1f\", (($duration - $estimate) / $estimate) * 100}")
+      fi
+      
+      if ! $first; then
+        phases_json+=","
+      fi
+      first=false
+      
+      phases_json+="
+    {
+      \"name\": \"$phase_key\",
+      \"duration_sec\": $duration,
+      \"target_sec\": $estimate,
+      \"variance_pct\": $variance
+    }"
+    fi
+  done
+  
+  phases_json+="
+  ]"
+  
+  # Write JSON report
+  cat > "$output_file" <<EOF
+{
+  "timestamp": "$timestamp",
+  "summary": {
+    "total_duration_sec": $total_duration,
+    "target_duration_sec": $target,
+    "performance_score": $performance_score,
+    "phases_completed": ${#PHASE_DURATIONS[@]}
+  },
+  "phases": $phases_json
+}
+EOF
+  
+  log_info "Timing data exported successfully"
+  return 0
 }

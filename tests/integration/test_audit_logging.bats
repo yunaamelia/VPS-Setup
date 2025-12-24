@@ -59,6 +59,7 @@ setup() {
   cat > "${auditctl_mock}" <<EOF
 #!/bin/bash
 if [[ "\$1" == "-l" ]]; then
+  # echo "Mock auditctl called with -l" >&2
   echo "-S execve -F exe=/usr/bin/sudo -k sudo_execution"
   echo "-w /etc/sudoers -p wa -k sudoers_changes"
   echo "-w /etc/passwd -p wa -k passwd_changes"

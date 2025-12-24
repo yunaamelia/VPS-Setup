@@ -1,0 +1,65 @@
+#!/bin/bash
+# Bash completion script for vps-provision
+# Install to /etc/bash_completion.d/ or /usr/share/bash-completion/completions/
+#
+# Usage: source this file or install system-wide
+
+_vps_provision_completions() {
+  local cur prev opts phases
+  COMPREPLY=()
+  cur="${COMP_WORDS[COMP_CWORD]}"
+  prev="${COMP_WORDS[COMP_CWORD-1]}"
+  
+  # Valid options
+  opts="--help --version --yes --dry-run --skip-validation --resume --force
+        --config --log-level --no-color --plain --skip-phase --only-phase
+        --username --output-format -h -v -y -c"
+  
+  # Valid phases
+  phases="system-prep desktop-install rdp-config user-creation
+          ide-vscode ide-cursor ide-antigravity terminal-setup
+          dev-tools verification"
+  
+  # Log levels
+  log_levels="DEBUG INFO WARNING ERROR"
+  
+  # Output formats
+  output_formats="text json"
+  
+  case "${prev}" in
+    --log-level)
+      COMPREPLY=( $(compgen -W "${log_levels}" -- "${cur}") )
+      return 0
+      ;;
+    --output-format)
+      COMPREPLY=( $(compgen -W "${output_formats}" -- "${cur}") )
+      return 0
+      ;;
+    --skip-phase|--only-phase)
+      COMPREPLY=( $(compgen -W "${phases}" -- "${cur}") )
+      return 0
+      ;;
+    --config|-c)
+      # Complete file paths
+      COMPREPLY=( $(compgen -f -- "${cur}") )
+      return 0
+      ;;
+    --username)
+      # No completion for username (user should type custom value)
+      return 0
+      ;;
+    *)
+      ;;
+  esac
+  
+  # Complete options
+  if [[ ${cur} == -* ]]; then
+    COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+    return 0
+  fi
+  
+  return 0
+}
+
+# Register completion function
+complete -F _vps_provision_completions vps-provision

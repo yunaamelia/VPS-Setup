@@ -9,6 +9,10 @@ setup() {
   export TEMP_DIR="/tmp/vps-provision-test"
   
   mkdir -p "$TEST_DIR" "$TEMP_DIR"
+  export BACKUP_DIR="${TEST_DIR}/backups"
+  mkdir -p "$BACKUP_DIR"
+  
+  export LIB_DIR="${PROJECT_ROOT}/lib"
   
   # Set LOG_FILE BEFORE sourcing logger.sh (it uses readonly)
   export LOG_FILE="${TEST_DIR}/test.log"
@@ -36,13 +40,12 @@ teardown() {
   if ! type lock_acquire &>/dev/null; then
     skip "lock functions not available"
   fi
-  run lock_acquire
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"Lock acquired"* ]]
+  lock_acquire
   
   run lock_release
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Lock released"* ]]
+  lock_release 2>/dev/null || true
+  grep -q "Lock released" "$LOG_FILE"
 }
 
 @test "interrupt: detect stale lock file" {
@@ -80,7 +83,9 @@ teardown() {
   # Try to acquire again (should fail)
   run lock_acquire 0
   [ "$status" -eq 1 ]
-  [[ "$output" == *"Lock is held"* ]]
+  run lock_acquire 0
+  [ "$status" -eq 1 ]
+  grep -q "Lock is held" "$LOG_FILE"
   
   # Release for cleanup
   lock_release

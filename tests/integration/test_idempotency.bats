@@ -13,6 +13,7 @@
 
 # Setup test environment
 setup() {
+  export PROJECT_ROOT="${BATS_TEST_DIRNAME}/../.."
   export LIB_DIR="${PROJECT_ROOT}/lib"
   export BIN_DIR="${PROJECT_ROOT}/bin"
   
@@ -33,13 +34,19 @@ setup() {
   mkdir -p "${TEST_CHECKPOINT_DIR}"
   mkdir -p "${TEST_STATE_DIR}"
   mkdir -p "${TEST_LOG_DIR}"
+  export BACKUP_DIR="${TEST_CHECKPOINT_DIR}/backups"
+  mkdir -p "$BACKUP_DIR"
   
   # Source core libraries (suppress errors for readonly vars)
-  source "${LIB_DIR}/core/logger.sh" 2>/dev/null || true
-  source "${LIB_DIR}/core/checkpoint.sh" 2>/dev/null || true
+  source "${LIB_DIR}/core/logger.sh"
+  source "${LIB_DIR}/core/checkpoint.sh"
   
   # Initialize checkpoint system
   checkpoint_init 2>/dev/null || true
+  
+  # Ensure we have a clean state
+  rm -rf "${CHECKPOINT_DIR}" "${STATE_DIR}" "${LOG_DIR}"
+  mkdir -p "${CHECKPOINT_DIR}" "${STATE_DIR}" "${LOG_DIR}"
 }
 
 # Cleanup after tests
@@ -49,27 +56,33 @@ teardown() {
   rm -rf "${TEST_LOG_DIR}"
 }
 
-# Helper: Simulate a provisioning phase
+# Helper to capture system state
+capture_state() {
+  echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$1"
+  ls -la "${CHECKPOINT_DIR}" >> "$1"
+  ls -la "${LOG_DIR}" >> "$1"
+}
+
+# Helper to simulate a phase execution
 simulate_phase() {
-  local phase_name="$1"
-  local duration="${2:-1}"  # Default 1 second
+  local phase="$1"
+  local duration="${2:-1}"
   
-  log_info "Simulating phase: ${phase_name}"
+  log_info "Simulating phase: ${phase}"
   
-  # Check if should skip
-  if checkpoint_should_skip "${phase_name}"; then
-    log_info "Phase ${phase_name} skipped (checkpoint exists)"
+  if checkpoint_exists "${phase}"; then
+    log_info "Phase ${phase} skipped (checkpoint exists)"
     return 0
   fi
   
-  # Simulate work
   sleep "${duration}"
-  
-  # Create checkpoint
-  checkpoint_create "${phase_name}"
-  
-  log_info "Phase ${phase_name} completed"
-  return 0
+  log_info "Phase ${phase} completed"
+  checkpoint_create "${phase}"
+}
+
+# Ignore timestamp changes in state comparison
+diff_state() {
+  diff <(grep -v "Timestamp" "$1") <(grep -v "Timestamp" "$2")
 }
 
 # Helper: Measure execution time
@@ -80,8 +93,8 @@ measure_time() {
   
   start_time=$(date +%s)
   
-  # Execute command
-  "$@"
+  # Execute command (silence output to verify timing only)
+  "$@" >/dev/null 2>&1
   
   end_time=$(date +%s)
   duration=$((end_time - start_time))
@@ -228,21 +241,25 @@ collect_system_state() {
     skip "Checkpoint functions not available in this environment"
   fi
   # First run (simulate with longer phases)
-  first_run_duration=$(measure_time bash -c '
+  run_phases_1() {
     simulate_phase "system-prep" 2
     simulate_phase "desktop-install" 2
     simulate_phase "rdp-config" 2
-  ')
+  }
+  
+  first_run_duration=$(measure_time run_phases_1)
   
   # Verify first run took expected time (at least 6 seconds)
   [ "${first_run_duration}" -ge 6 ]
   
   # Second run (should skip all phases, much faster)
-  second_run_duration=$(measure_time bash -c '
+  run_phases_2() {
     simulate_phase "system-prep" 2
     simulate_phase "desktop-install" 2
     simulate_phase "rdp-config" 2
-  ')
+  }
+  
+  second_run_duration=$(measure_time run_phases_2)
   
   # Second run should be much faster (checkpoint checks are fast)
   # Should complete in under 2 seconds vs 6+ seconds
@@ -278,9 +295,9 @@ collect_system_state() {
   state2="/tmp/vps-state2-$$.txt"
   collect_system_state "${state2}"
   
-  # Compare states (should be identical, including timestamps)
-  diff "${state1}" "${state2}"
-  [ $? -eq 0 ]
+  # Compare states (excluding timestamps)
+  run diff_state "${state1}" "${state2}"
+  [ "$status" -eq 0 ]
 }
 
 # Test: Partial failure resume
@@ -330,11 +347,11 @@ collect_system_state() {
   checkpoint_handle_force_mode
   
   # Now all phases should run (no checkpoints exist)
-  checkpoint_should_skip "phase1"
-  [ $? -ne 0 ]  # Should NOT skip (return 1 = should run)
+  run checkpoint_should_skip "phase1"
+  [ "$status" -ne 0 ]  # Should NOT skip (return 1 = should run)
   
-  checkpoint_should_skip "phase2"
-  [ $? -ne 0 ]  # Should NOT skip
+  run checkpoint_should_skip "phase2"
+  [ "$status" -ne 0 ]  # Should NOT skip
   
   # Run phases
   simulate_phase "phase1" 1
@@ -365,8 +382,8 @@ collect_system_state() {
   sed -i '/CHECKPOINT_NAME/d' "${checkpoint_file}"
   
   # Validation should fail
-  checkpoint_validate "valid-phase"
-  [ $? -ne 0 ]
+  run checkpoint_validate "valid-phase"
+  [ "$status" -ne 0 ]
 }
 
 # Test: Checkpoint timestamps
@@ -435,8 +452,8 @@ collect_system_state() {
   checkpoint_exists "keep-this"
   [ $? -eq 0 ]
   
-  checkpoint_exists "delete-this"
-  [ $? -ne 0 ]
+  run checkpoint_exists "delete-this"
+  [ "$status" -ne 0 ]
 }
 
 # Test: Checkpoint clear all

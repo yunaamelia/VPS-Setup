@@ -283,7 +283,10 @@ audit_logging_verify() {
   log_info "Audit rules loaded: ${rules_count} rules"
   
   # Verify sudo monitoring rule exists
-  if ! auditctl -l | grep -q "sudo_execution"; then
+  local audit_output
+  audit_output=$(auditctl -l)
+  # log_info "DEBUG: auditctl output: $audit_output"
+  if ! echo "$audit_output" | grep -q "sudo_execution"; then
     log_error "Sudo execution monitoring rule not found"
     return 1
   fi

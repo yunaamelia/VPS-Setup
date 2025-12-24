@@ -53,7 +53,18 @@ config_init() {
   fi
   
   log_debug "Configuration loaded from $loaded file(s)"
+  log_debug "Configuration loaded from $loaded file(s)"
   return 0
+}
+
+# Alias for config_init to match vps-provision calls
+config_load_default() {
+  config_init
+}
+
+# Alias for config_load_file to match vps-provision calls
+config_load() {
+  config_load_file "$1"
 }
 
 # Load configuration from a file

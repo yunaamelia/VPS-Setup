@@ -332,27 +332,27 @@
 
 ### Command-Line Usability
 
-- [ ] T115 Enhance --help output: usage syntax, all options with descriptions, 3+ examples per UX-013
-- [ ] T116 Implement interactive prompts for missing arguments per UX-014
-- [ ] T117 Support standard shortcuts (-y, -v, -h) per UX-015
-- [ ] T118 Add bash completion script for tab completion per UX-016
-- [ ] T119 Detect non-interactive shell (CI/CD) and disable prompts per UX-017
-- [ ] T120 Restrict output to 80 chars or detect terminal width per UX-018
+- [x] T115 Enhance --help output: usage syntax, all options with descriptions, 3+ examples per UX-013
+- [x] T116 Implement interactive prompts for missing arguments per UX-014
+- [x] T117 Support standard shortcuts (-y, -v, -h) per UX-015
+- [x] T118 Add bash completion script for tab completion per UX-016
+- [x] T119 Detect non-interactive shell (CI/CD) and disable prompts per UX-017
+- [x] T120 Restrict output to 80 chars or detect terminal width per UX-018
 
 ### Accessibility & Inclusivity
 
-- [ ] T121 Implement --plain/--no-color mode per UX-019
-- [ ] T122 Use consistent color coding (Green=Success, Red=Error, Yellow=Warning, Blue=Info) per UX-020
-- [ ] T123 Add text labels [OK], [ERR], [WARN] alongside colors per UX-021
-- [ ] T124 Avoid complex ASCII art in critical output per UX-022
+- [x] T121 Implement --plain/--no-color mode per UX-019
+- [x] T122 Use consistent color coding (Green=Success, Red=Error, Yellow=Warning, Blue=Info) per UX-020
+- [x] T123 Add text labels [OK], [ERR], [WARN] alongside colors per UX-021
+- [x] T124 Avoid complex ASCII art in critical output per UX-022
 
 ### Logging & Documentation
 
-- [ ] T125 Write debug logs to `/var/log/vps-provision.log` per UX-023
-- [ ] T126 Redact sensitive info in all logs using [REDACTED] per UX-024
-- [ ] T127 Add "Quick Start" section to help text per UX-025
-- [ ] T128 Ensure consistent terminology across CLI/logs/docs per UX-026
-- [ ] T129 Create comprehensive documentation in `docs/` directory
+- [x] T125 Write debug logs to `/var/log/vps-provision.log` per UX-023
+- [x] T126 Redact sensitive info in all logs using [REDACTED] per UX-024
+- [x] T127 Add "Quick Start" section to help text per UX-025
+- [x] T128 Ensure consistent terminology across CLI/logs/docs per UX-026
+- [x] T129 Create comprehensive documentation in `docs/` directory
 
 **Checkpoint**: Excellent user experience delivered
 
