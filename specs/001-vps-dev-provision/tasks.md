@@ -22,13 +22,13 @@
 
 **Purpose**: Project initialization and basic structure
 
-- [X] T001 Create project directory structure per plan.md: `vps-provision/{bin,lib/{core,modules,utils},config,tests/{unit,integration,contract,e2e},docs}`
-- [X] T002 Initialize Git repository and create `.gitignore` for logs, temp files, and test artifacts
-- [X] T003 [P] Create `README.md` with project overview, quick start guide, and installation instructions
-- [X] T004 [P] Create `Makefile` with targets: `install`, `test`, `clean`, `lint` for build automation
-- [X] T005 Create configuration template in `config/default.conf` with default values for all configurable options
-- [X] T006 [P] Setup bats-core test framework and create `.bats-version` file
-- [X] T007 [P] Create `.editorconfig` for consistent code formatting across team
+- [x] T001 Create project directory structure per plan.md: `vps-provision/{bin,lib/{core,modules,utils},config,tests/{unit,integration,contract,e2e},docs}`
+- [x] T002 Initialize Git repository and create `.gitignore` for logs, temp files, and test artifacts
+- [x] T003 [P] Create `README.md` with project overview, quick start guide, and installation instructions
+- [x] T004 [P] Create `Makefile` with targets: `install`, `test`, `clean`, `lint` for build automation
+- [x] T005 Create configuration template in `config/default.conf` with default values for all configurable options
+- [x] T006 [P] Setup bats-core test framework and create `.bats-version` file
+- [x] T007 [P] Create `.editorconfig` for consistent code formatting across team
 
 ---
 
@@ -40,34 +40,34 @@
 
 ### Core Library Components
 
-- [X] T008 Implement logging framework in `lib/core/logger.sh` with log levels (DEBUG, INFO, WARNING, ERROR), file output to `/var/log/vps-provision/`, console formatting with colors
-- [X] T009 Implement progress tracking in `lib/core/progress.sh` with phase tracking, percentage calculation, time estimation, visual indicators (spinners, progress bars)
-- [X] T010 Implement checkpoint mechanism in `lib/core/checkpoint.sh` with create, check, validate, clear functions for idempotency support
-- [X] T011 Implement configuration manager in `lib/core/config.sh` to read default.conf, support custom config files, validate configuration values
-- [X] T012 Implement transaction logger in `lib/core/transaction.sh` for recording all actions with rollback commands in LIFO format
-- [X] T013 Implement rollback engine in `lib/core/rollback.sh` to parse transaction log, execute rollback commands in reverse order, verify system state after rollback
+- [x] T008 Implement logging framework in `lib/core/logger.sh` with log levels (DEBUG, INFO, WARNING, ERROR), file output to `/var/log/vps-provision/`, console formatting with colors
+- [x] T009 Implement progress tracking in `lib/core/progress.sh` with phase tracking, percentage calculation, time estimation, visual indicators (spinners, progress bars)
+- [x] T010 Implement checkpoint mechanism in `lib/core/checkpoint.sh` with create, check, validate, clear functions for idempotency support
+- [x] T011 Implement configuration manager in `lib/core/config.sh` to read default.conf, support custom config files, validate configuration values
+- [x] T012 Implement transaction logger in `lib/core/transaction.sh` for recording all actions with rollback commands in LIFO format
+- [x] T013 Implement rollback engine in `lib/core/rollback.sh` to parse transaction log, execute rollback commands in reverse order, verify system state after rollback
 
 ### System Validation
 
-- [X] T014 Implement pre-flight validator in `lib/core/validator.sh` to check OS version (Debian 13), verify minimum resources (2GB RAM, 1 vCPU, 25GB disk), test network connectivity, validate package repositories
-- [X] T015 Create unit tests in `tests/unit/test_validator.bats` for all validation functions with mocked system calls
+- [x] T014 Implement pre-flight validator in `lib/core/validator.sh` to check OS version (Debian 13), verify minimum resources (2GB RAM, 1 vCPU, 25GB disk), test network connectivity, validate package repositories
+- [x] T015 Create unit tests in `tests/unit/test_validator.bats` for all validation functions with mocked system calls
 
 ### Data Models & State Management
 
-- [X] T016 Create JSON schemas in `lib/models/` for ProvisioningSession, PhaseExecution, ProvisioningAction, VPSInstance, DeveloperUser per data-model.md
-- [X] T017 Implement state persistence in `lib/core/state.sh` to save/load session state to `/var/vps-provision/sessions/`, read/write phase state, manage checkpoint files
+- [x] T016 Create JSON schemas in `lib/models/` for ProvisioningSession, PhaseExecution, ProvisioningAction, VPSInstance, DeveloperUser per data-model.md
+- [x] T017 Implement state persistence in `lib/core/state.sh` to save/load session state to `/var/vps-provision/sessions/`, read/write phase state, manage checkpoint files
 
 ### Python Utilities
 
-- [X] T018 [P] Create Python utility in `lib/utils/package-manager.py` for advanced APT operations, dependency resolution, package verification
-- [X] T019 [P] Create credential generator in `lib/utils/credential-gen.py` with CSPRNG password generation (16+ chars, mixed case, numbers, symbols), secure display formatting
-- [X] T020 [P] Create health check utility in `lib/utils/health-check.py` for post-installation validation of all components
+- [x] T018 [P] Create Python utility in `lib/utils/package-manager.py` for advanced APT operations, dependency resolution, package verification
+- [x] T019 [P] Create credential generator in `lib/utils/credential-gen.py` with CSPRNG password generation (16+ chars, mixed case, numbers, symbols), secure display formatting
+- [x] T020 [P] Create health check utility in `lib/utils/health-check.py` for post-installation validation of all components
 
 ### CLI Interface Foundation
 
-- [X] T021 Implement main CLI entry point in `bin/vps-provision` with argument parsing, help/version display, configuration loading, session initialization
-- [X] T022 Create contract test suite in `tests/contract/test_cli_interface.bats` to validate all CLI flags per contracts/cli-interface.json
-- [X] T023 Implement dry-run mode to show planned actions without execution, display checkpoint status, estimate duration
+- [x] T021 Implement main CLI entry point in `bin/vps-provision` with argument parsing, help/version display, configuration loading, session initialization
+- [x] T022 Create contract test suite in `tests/contract/test_cli_interface.bats` to validate all CLI flags per contracts/cli-interface.json
+- [x] T023 Implement dry-run mode to show planned actions without execution, display checkpoint status, estimate duration
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -81,57 +81,57 @@
 
 ### System Preparation Module
 
-- [X] T024 [US1] Implement system prep module in `lib/modules/system-prep.sh` to update APT package lists, upgrade existing packages, install build-essential, curl, wget, git, configure unattended-upgrades
-- [X] T025 [US1] Create integration test in `tests/integration/test_system_prep.bats` to verify all packages installed, validate unattended-upgrades configuration
-- [X] T026 [US1] Implement checkpoint creation for system-prep phase
+- [x] T024 [US1] Implement system prep module in `lib/modules/system-prep.sh` to update APT package lists, upgrade existing packages, install build-essential, curl, wget, git, configure unattended-upgrades
+- [x] T025 [US1] Create integration test in `tests/integration/test_system_prep.bats` to verify all packages installed, validate unattended-upgrades configuration
+- [x] T026 [US1] Implement checkpoint creation for system-prep phase
 
 ### Desktop Environment Module
 
-- [X] T027 [US1] Implement desktop install module in `lib/modules/desktop-env.sh` to install task-xfce-desktop and xfce4-goodies, configure LightDM display manager, set XFCE as default session, apply customizations (theme, panel, terminal)
-- [X] T028 [US1] Create desktop configuration templates in `config/desktop/` for XFCE panel, terminal, theme settings per installation-specs.md
-- [X] T029 [US1] Create integration test in `tests/integration/test_desktop_rdp.bats` to verify XFCE installation, LightDM service running, desktop memory usage ≤500MB
-- [X] T030 [US1] Implement checkpoint creation for desktop-install phase
+- [x] T027 [US1] Implement desktop install module in `lib/modules/desktop-env.sh` to install task-xfce-desktop and xfce4-goodies, configure LightDM display manager, set XFCE as default session, apply customizations (theme, panel, terminal)
+- [x] T028 [US1] Create desktop configuration templates in `config/desktop/` for XFCE panel, terminal, theme settings per installation-specs.md
+- [x] T029 [US1] Create integration test in `tests/integration/test_desktop_rdp.bats` to verify XFCE installation, LightDM service running, desktop memory usage ≤500MB
+- [x] T030 [US1] Implement checkpoint creation for desktop-install phase
 
 ### RDP Server Module
 
-- [X] T031 [US1] Implement RDP config module in `lib/modules/rdp-server.sh` to install xrdp package, generate self-signed TLS certificates, configure xrdp.ini for multi-session support per installation-specs.md, configure sesman.ini for session persistence, enable and start xrdp service
-- [X] T032 [US1] Create firewall rules in RDP module to enable ufw, allow port 22 (SSH) and 3389 (RDP), deny all other incoming traffic
-- [X] T033 [US1] Create integration test to verify xrdp service active, port 3389 listening, TLS certificates exist with correct permissions, RDP session initialization ≤10 seconds
-- [X] T034 [US1] Implement checkpoint creation for rdp-config phase
+- [x] T031 [US1] Implement RDP config module in `lib/modules/rdp-server.sh` to install xrdp package, generate self-signed TLS certificates, configure xrdp.ini for multi-session support per installation-specs.md, configure sesman.ini for session persistence, enable and start xrdp service
+- [x] T032 [US1] Create firewall rules in RDP module to enable ufw, allow port 22 (SSH) and 3389 (RDP), deny all other incoming traffic
+- [x] T033 [US1] Create integration test to verify xrdp service active, port 3389 listening, TLS certificates exist with correct permissions, RDP session initialization ≤10 seconds
+- [x] T034 [US1] Implement checkpoint creation for rdp-config phase
 
 ### User Provisioning Module
 
-- [X] T035 [US1] Implement user provisioning module in `lib/modules/user-provisioning.sh` to create developer user account "devuser", configure passwordless sudo, add user to groups (sudo, audio, video, dialout), generate secure random password, force password change on first login
-- [X] T036 [US1] Create .xsession file in user home directory for XFCE compatibility with xrdp
-- [X] T037 [US1] Create integration test to verify user exists with UID ≥1000, sudo access works without password, user in correct groups, home directory permissions correct
-- [X] T038 [US1] Implement checkpoint creation for user-creation phase
+- [x] T035 [US1] Implement user provisioning module in `lib/modules/user-provisioning.sh` to create developer user account "devuser", configure passwordless sudo, add user to groups (sudo, audio, video, dialout), generate secure random password, force password change on first login
+- [x] T036 [US1] Create .xsession file in user home directory for XFCE compatibility with xrdp
+- [x] T037 [US1] Create integration test to verify user exists with UID ≥1000, sudo access works without password, user in correct groups, home directory permissions correct
+- [x] T038 [US1] Implement checkpoint creation for user-creation phase
 
 ### IDE Installation Modules
 
-- [X] T039 [P] [US1] Implement VSCode module in `lib/modules/ide-vscode.sh` to add Microsoft GPG key and repository, install code package, verify executable exists, create desktop launcher, test launch time ≤10 seconds
-- [X] T040 [P] [US1] Implement Cursor module in `lib/modules/ide-cursor.sh` to download Cursor .deb or AppImage, install with fallback strategy, verify executable, create desktop launcher, test launch
-- [X] T041 [P] [US1] Implement Antigravity module in `lib/modules/ide-antigravity.sh` to fetch latest AppImage from GitHub, install to /opt/antigravity, create desktop launcher and CLI alias, verify launch
-- [X] T042 [US1] Create integration test in `tests/integration/test_ide_install.bats` to verify all IDEs executable, desktop launchers exist, launch tests pass, no missing dependencies
-- [X] T043 [US1] Implement checkpoint creation for each IDE phase
+- [x] T039 [P] [US1] Implement VSCode module in `lib/modules/ide-vscode.sh` to add Microsoft GPG key and repository, install code package, verify executable exists, create desktop launcher, test launch time ≤10 seconds
+- [x] T040 [P] [US1] Implement Cursor module in `lib/modules/ide-cursor.sh` to download Cursor .deb or AppImage, install with fallback strategy, verify executable, create desktop launcher, test launch
+- [x] T041 [P] [US1] Implement Antigravity module in `lib/modules/ide-antigravity.sh` to fetch latest AppImage from GitHub, install to /opt/antigravity, create desktop launcher and CLI alias, verify launch
+- [x] T042 [US1] Create integration test in `tests/integration/test_ide_install.bats` to verify all IDEs executable, desktop launchers exist, launch tests pass, no missing dependencies
+- [x] T043 [US1] Implement checkpoint creation for each IDE phase
 
 ### Terminal Enhancement Module
 
-- [X] T044 [US1] Implement terminal setup module in `lib/modules/terminal-setup.sh` to install bash-completion, configure git aliases (st, ci, co, br, lg), set colored PS1 prompt, configure .bashrc with developer-friendly settings
-- [X] T045 [US1] Create integration test to verify bash-completion installed, git aliases work, prompt includes git branch info
-- [X] T046 [US1] Implement checkpoint creation for terminal-setup phase
+- [x] T044 [US1] Implement terminal setup module in `lib/modules/terminal-setup.sh` to install bash-completion, configure git aliases (st, ci, co, br, lg), set colored PS1 prompt, configure .bashrc with developer-friendly settings
+- [x] T045 [US1] Create integration test to verify bash-completion installed, git aliases work, prompt includes git branch info
+- [x] T046 [US1] Implement checkpoint creation for terminal-setup phase
 
 ### Development Tools Module
 
-- [X] T047 [US1] Implement dev tools module in `lib/modules/dev-tools.sh` to install git, configure global git settings, install common development utilities (vim, curl, jq, htop, tree), verify all tools executable
-- [X] T048 [US1] Create integration test to verify all dev tools installed and functional
-- [X] T049 [US1] Implement checkpoint creation for dev-tools phase
+- [x] T047 [US1] Implement dev tools module in `lib/modules/dev-tools.sh` to install git, configure global git settings, install common development utilities (vim, curl, jq, htop, tree), verify all tools executable
+- [x] T048 [US1] Create integration test to verify all dev tools installed and functional
+- [x] T049 [US1] Implement checkpoint creation for dev-tools phase
 
 ### Verification & Validation
 
-- [X] T050 [US1] Implement verification module to check all services running (xrdp, lightdm), verify all IDE executables exist and launch, test network port accessibility (22, 3389), validate file permissions, verify configuration correctness per installation-specs.md §Verification
-- [X] T051 [US1] Generate summary report in JSON format with installed versions, duration per phase, resource usage peaks, success/failure status
-- [X] T052 [US1] Display "ready" status banner with connection details (IP, port, username, generated password in secure format)
-- [X] T053 [US1] Create E2E test in `tests/e2e/test_full_provision.sh` to provision fresh VPS, verify all SC-001 through SC-012 success criteria
+- [x] T050 [US1] Implement verification module to check all services running (xrdp, lightdm), verify all IDE executables exist and launch, test network port accessibility (22, 3389), validate file permissions, verify configuration correctness per installation-specs.md §Verification
+- [x] T051 [US1] Generate summary report in JSON format with installed versions, duration per phase, resource usage peaks, success/failure status
+- [x] T052 [US1] Display "ready" status banner with connection details (IP, port, username, generated password in secure format)
+- [x] T053 [US1] Create E2E test in `tests/e2e/test_full_provision.sh` to provision fresh VPS, verify all SC-001 through SC-012 success criteria
 
 **US1 Acceptance**: Can provision fresh VPS with single command, connect via RDP, launch all IDEs successfully
 
@@ -145,13 +145,13 @@
 
 ### Sudo Configuration Enhancement
 
-- [ ] T054 [US2] Enhance user provisioning module to configure sudo with lecture on first use per SEC-010, set sudo timeout to reasonable value, configure audit logging for sudo commands per SEC-014
-- [ ] T055 [US2] Create integration test in `tests/integration/test_user_permissions.bats` to verify devuser can apt-get install packages, edit files in /etc/, restart systemd services, execute privileged commands without password prompts
+- [x] T054 [US2] Enhance user provisioning module to configure sudo with lecture on first use per SEC-010, set sudo timeout to reasonable value, configure audit logging for sudo commands per SEC-014
+- [x] T055 [US2] Create integration test in `tests/integration/test_user_permissions.bats` to verify devuser can apt-get install packages, edit files in /etc/, restart systemd services, execute privileged commands without password prompts
 
 ### Security Hardening for Privileged Access
 
-- [ ] T056 [US2] Implement auditd configuration to log all sudo executions, retain logs for 30 days per SEC-014
-- [ ] T057 [US2] Create verification test to confirm audit logging operational
+- [x] T056 [US2] Implement auditd configuration to log all sudo executions, retain logs for 30 days per SEC-014
+- [x] T057 [US2] Create verification test to confirm audit logging operational
 
 **US2 Acceptance**: Developer user can perform all administrative tasks without friction
 
@@ -472,8 +472,9 @@
 **Requirements Coverage**: 100% (all 152 requirements mapped)
 
 **Key Deliverables by Phase**:
+
 - Phase 1-2: Foundation (T001-T023) - 23 tasks
-- Phase 3: MVP - User Story 1 (T024-T053) - 30 tasks  
+- Phase 3: MVP - User Story 1 (T024-T053) - 30 tasks
 - Phase 4: User Story 2 (T054-T057) - 4 tasks
 - Phase 5: User Story 3 (T058-T062) - 5 tasks
 - Phase 6: User Story 4 (T063-T068) - 6 tasks
@@ -485,6 +486,7 @@
 - Phase 12: Documentation (T166-T180) - 15 tasks
 
 **Detailed Phase 7 Task Breakdown** (28 tasks for 30 RR requirements):
+
 - Rollback: T069, T070, T071, T071a, T071b (RR-001 to RR-005) ✅
 - Error Detection: T072, T072a, T073, T074 (RR-006 to RR-012) ✅
 - Resource Management: T075, T076, T077, T077a, T077b (RR-013 to RR-016) ✅
@@ -496,18 +498,19 @@
 
 **Coverage Verification**:
 
-| Requirement Type | Count | Tasks | Coverage | Status |
-|------------------|-------|-------|----------|---------|
-| FR (Functional) | 40 | 53+ | 133% | ✅ Complete |
-| NFR (Non-Functional) | 22 | 39+ | 177% | ✅ Complete |
-| UX (User Experience) | 26 | 25 | 96% | ✅ Complete |
-| SEC (Security) | 18 | 19 | 106% | ✅ Complete |
-| RR (Recovery) | 30 | 30 | **100%** | ✅ **Fixed** |
-| SC (Success Criteria) | 12 | 30+ | 250% | ✅ Complete |
-| User Stories | 4 | 196 | 100% | ✅ Complete |
-| **TOTAL** | **152** | **196** | **129%** | ✅ **100% Complete** |
+| Requirement Type      | Count   | Tasks   | Coverage | Status               |
+| --------------------- | ------- | ------- | -------- | -------------------- |
+| FR (Functional)       | 40      | 53+     | 133%     | ✅ Complete          |
+| NFR (Non-Functional)  | 22      | 39+     | 177%     | ✅ Complete          |
+| UX (User Experience)  | 26      | 25      | 96%      | ✅ Complete          |
+| SEC (Security)        | 18      | 19      | 106%     | ✅ Complete          |
+| RR (Recovery)         | 30      | 30      | **100%** | ✅ **Fixed**         |
+| SC (Success Criteria) | 12      | 30+     | 250%     | ✅ Complete          |
+| User Stories          | 4       | 196     | 100%     | ✅ Complete          |
+| **TOTAL**             | **152** | **196** | **129%** | ✅ **100% Complete** |
 
 **RR Requirements Full Mapping**:
+
 - RR-001 (LIFO rollback) → T069 ✅
 - RR-002 (complete restoration) → T069, T071 ✅
 - RR-003 (verify rollback) → T070 ✅
@@ -541,14 +544,17 @@
 
 **Parallel Opportunities** (16 tasks can run concurrently):
 
-*Foundation Phase*:
+_Foundation Phase_:
+
 - T003, T004, T006, T007 (Documentation and tooling setup) - 4 tasks
 - T018, T019, T020 (Python utilities) - 3 tasks
 
-*MVP Phase*:
+_MVP Phase_:
+
 - T039, T040, T041 (IDE installations - saves 3 minutes) - 3 tasks
 
-*Security Phase*:
+_Security Phase_:
+
 - T088, T090, T092, T097, T100, T104 (Independent security tests) - 6 tasks
 
 **Total Parallel Tasks**: 16 identified  
@@ -561,27 +567,32 @@
 ### Recommended Execution Order:
 
 **Week 1-2: Phase 1-2 (Foundation)** ⏰ Estimated: 2-3 weeks
+
 - T001-T023: Core infrastructure
 - Deliverable: Working logger, progress tracker, checkpoint system, validators
 - Gate: All foundation unit tests passing
 
 **Week 3-7: Phase 3 (MVP - User Story 1)** 🎯 ⏰ Estimated: 4-5 weeks
+
 - T024-T053: Complete one-command provisioning
 - Deliverable: Can provision fresh VPS with RDP and 3 IDEs
 - Gate: E2E test (T053) passing on fresh DO droplet
 - **This is the minimum viable product**
 
 **Week 8-10: Phases 4-6 (User Stories 2-4)** ⏰ Estimated: 2-3 weeks
+
 - T054-T068: Privileged operations, multi-session, idempotency
 - Deliverable: Enhanced user experience for all scenarios
 - Gate: All user story acceptance scenarios passing
 
 **Week 11-14: Phases 7-10 (Cross-Cutting Concerns)** ⏰ Estimated: 4-5 weeks
+
 - T069-T143: Error handling, security, UX, performance
 - Deliverable: Production-ready system with comprehensive error handling
 - Gate: All security tests passing, performance benchmarks met
 
 **Week 15-17: Phases 11-12 (Testing & Polish)** ⏰ Estimated: 2-3 weeks
+
 - T144-T180: Comprehensive test suite, documentation
 - Deliverable: Release-ready v1.0.0
 - Gate: 100% test pass rate, all documentation complete
@@ -591,12 +602,14 @@
 ### Phase Gates (Quality Checkpoints):
 
 1. **Foundation Gate** (After T023):
+
    - [ ] All core libraries implemented
    - [ ] Unit tests passing (≥80% coverage)
    - [ ] CLI interface validated
    - [ ] No blocking issues
 
 2. **MVP Gate** (After T053):
+
    - [ ] Can provision fresh VPS in ≤15 minutes
    - [ ] RDP accessible immediately after completion
    - [ ] All 3 IDEs launch in ≤10 seconds
@@ -604,12 +617,14 @@
    - [ ] Ready for internal testing
 
 3. **Feature Complete Gate** (After T068):
+
    - [ ] All 4 user stories implemented
    - [ ] All acceptance scenarios passing
    - [ ] Idempotency verified
    - [ ] Ready for beta testing
 
 4. **Production Ready Gate** (After T143):
+
    - [ ] All security hardening complete
    - [ ] Error handling comprehensive
    - [ ] Performance targets met
@@ -625,11 +640,14 @@
 ### Risk Mitigation:
 
 **High Risk Areas**:
+
 1. IDE installation (T039-T041): Antigravity availability uncertain
+
    - Mitigation: Research installation method early (week 1-2)
    - Fallback: Document manual installation if automation blocked
 
 2. Network dependency (T078-T081): External repositories may be slow/unavailable
+
    - Mitigation: Implement robust retry logic and mirrors
    - Fallback: Local package caching for critical packages
 
@@ -638,7 +656,9 @@
    - Fallback: Document minimum 6GB RAM for optimal multi-session
 
 **Medium Risk Areas**:
+
 1. Security penetration test (T104): May reveal vulnerabilities
+
    - Mitigation: Continuous security review throughout development
    - Plan: Allocate 1 week buffer for security fixes
 
@@ -649,12 +669,14 @@
 ### Dependencies:
 
 **External Dependencies**:
+
 - Digital Ocean API access (for E2E testing)
 - Debian 13 repositories availability
 - VSCode, Cursor, Antigravity download sources
 - GitHub access (for Antigravity AppImage)
 
 **Internal Dependencies**:
+
 - Phase 2 MUST complete before Phase 3+
 - T012 (transaction logger) MUST complete before T069 (rollback)
 - T008 (logger) MUST complete before any module implementation
@@ -663,12 +685,14 @@
 ### Success Metrics:
 
 **During Development**:
+
 - Zero constitution violations
 - ≥80% unit test coverage maintained throughout
 - Weekly progress reviews
 - No tasks blocked >3 days
 
 **At Release**:
+
 - 100% of SC-001 through SC-012 validated
 - ≤15 minute provisioning on target hardware
 - Zero critical security vulnerabilities
@@ -690,14 +714,17 @@
 **Last Updated**: December 23, 2025  
 **Next Review**: After MVP completion (T053)  
 **Status**: ✅ **100% COMPLETE SPECIFICATION** - Ready for implementation**Parallel Opportunities**:
+
 - Foundation: T003, T004, T006, T007, T018, T019, T020 (7 tasks)
 - IDEs: T039, T040, T041 (3 tasks in parallel saves 3 minutes)
 
 **MVP Scope** (Minimum Viable Product):
+
 - Phases 1-3 deliver User Story 1: One-command VPS setup with RDP and IDEs
 - Estimated: ~53 tasks for MVP
 
 **Dependencies**:
+
 - Phase 1 → Phase 2: Setup must complete before foundation
 - Phase 2 → Phase 3+: Foundation blocks all user stories
 - Phases 3-6: User stories can be developed in parallel after Phase 2
@@ -705,6 +732,7 @@
 - Phase 11-12: Final polish requires all features complete
 
 **Implementation Strategy**:
+
 1. Complete Phase 1-2 (foundation) first
 2. Implement Phase 3 (US1/MVP) for initial release
 3. Add Phases 4-6 (US2-US4) incrementally

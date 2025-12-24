@@ -158,7 +158,7 @@ user_provisioning_add_to_groups() {
 }
 
 # user_provisioning_configure_sudo
-# Configures passwordless sudo with security lecture
+# Configures passwordless sudo with security lecture, timeout, and audit logging
 #
 # Args:
 #   $1 - Username
@@ -170,17 +170,33 @@ user_provisioning_configure_sudo() {
   local username="$1"
   local sudoers_dir="${SUDOERS_DIR:-/etc/sudoers.d}"
   local sudoers_file="${sudoers_dir}/80-${username}"
+  local sudo_timeout="${SUDO_TIMEOUT:-15}"
   
   log_info "Configuring passwordless sudo for ${username}"
   
-  # Create sudoers entry with lecture enabled
+  # Backup existing file if it exists
+  if [[ -f "${sudoers_file}" ]]; then
+    cp "${sudoers_file}" "${sudoers_file}.bak"
+    transaction_log "mv ${sudoers_file}.bak ${sudoers_file}"
+  fi
+  
+  # Create sudoers entry with enhanced security settings
   cat > "${sudoers_file}" <<EOF
 # Sudoers configuration for developer user: ${username}
 # Created by VPS provisioning system
-# SEC-010: Enable sudo lecture for security awareness
+# SEC-010: Enable sudo lecture for security awareness on first use
 Defaults:${username} lecture="always"
 
-# Passwordless sudo for all commands
+# T054: Set reasonable sudo timeout (minutes) for session persistence
+Defaults:${username} timestamp_timeout=${sudo_timeout}
+
+# SEC-014: Enable audit logging for all sudo commands
+# Audit rules configured separately via auditd (see user_provisioning_configure_audit)
+# Log file: /var/log/sudo/sudo.log
+Defaults:${username} logfile="/var/log/sudo/sudo.log"
+Defaults:${username} log_input, log_output
+
+# Passwordless sudo for all commands (developer convenience)
 ${username} ALL=(ALL) NOPASSWD: ALL
 EOF
   
@@ -188,14 +204,110 @@ EOF
   if ! visudo -cf "${sudoers_file}"; then
     log_error "Invalid sudoers syntax, removing file"
     rm -f "${sudoers_file}"
+    # Restore backup if it exists
+    if [[ -f "${sudoers_file}.bak" ]]; then
+      mv "${sudoers_file}.bak" "${sudoers_file}"
+    fi
     return 1
   fi
   
-  # Set correct permissions
+  # Remove backup after successful validation
+  rm -f "${sudoers_file}.bak"
+  
+  # Set correct permissions (440 = read-only for owner and group)
   chmod 0440 "${sudoers_file}"
   
+  # Create sudo log directory
+  mkdir -p /var/log/sudo
+  chmod 0750 /var/log/sudo
+  transaction_log "rm -rf /var/log/sudo"
+  
   transaction_log "rm -f ${sudoers_file}"
-  log_info "Passwordless sudo configured successfully"
+  log_info "Passwordless sudo configured with enhanced security (lecture, timeout=${sudo_timeout}min, audit logging)"
+  return 0
+}
+
+# user_provisioning_configure_audit
+# Configures auditd to log all sudo executions per SEC-014
+#
+# Returns:
+#   0 - Audit configured successfully
+#   1 - Audit configuration failed
+user_provisioning_configure_audit() {
+  log_info "Configuring auditd for sudo command logging (SEC-014)"
+  
+  # Install auditd if not present
+  if ! dpkg -s auditd &> /dev/null; then
+    log_info "Installing auditd package"
+    if ! apt-get update &> /dev/null && apt-get install -y auditd 2>&1 | tee -a "${LOG_FILE}"; then
+      log_error "Failed to install auditd"
+      return 1
+    fi
+    transaction_log "apt-get remove -y auditd"
+  fi
+  
+  # Enable auditd service
+  if ! systemctl is-enabled auditd &> /dev/null; then
+    systemctl enable auditd 2>&1 | tee -a "${LOG_FILE}"
+    transaction_log "systemctl disable auditd"
+  fi
+  
+  # Start auditd if not running
+  if ! systemctl is-active auditd &> /dev/null; then
+    systemctl start auditd 2>&1 | tee -a "${LOG_FILE}"
+  fi
+  
+  # Configure audit rule to watch sudo executions
+  local audit_rules_file="/etc/audit/rules.d/sudo-logging.rules"
+  
+  # Backup existing rules if present
+  if [[ -f "${audit_rules_file}" ]]; then
+    cp "${audit_rules_file}" "${audit_rules_file}.bak"
+    transaction_log "mv ${audit_rules_file}.bak ${audit_rules_file}"
+  fi
+  
+  # Create audit rules for sudo commands
+  cat > "${audit_rules_file}" <<'EOF'
+# Audit rules for sudo command logging (SEC-014)
+# Monitor all executions of sudo binary
+-w /usr/bin/sudo -p x -k sudo_commands
+
+# Monitor sudoers file modifications
+-w /etc/sudoers -p wa -k sudoers_changes
+-w /etc/sudoers.d/ -p wa -k sudoers_changes
+
+# Monitor user privilege escalation
+-a always,exit -F arch=b64 -S execve -F euid=0 -F auid>=1000 -F auid!=4294967295 -k privileged_execution
+-a always,exit -F arch=b32 -S execve -F euid=0 -F auid>=1000 -F auid!=4294967295 -k privileged_execution
+EOF
+  
+  transaction_log "rm -f ${audit_rules_file}"
+  
+  # Load audit rules
+  if ! auditctl -R "${audit_rules_file}" 2>&1 | tee -a "${LOG_FILE}"; then
+    log_warning "Failed to load audit rules immediately (will load on next boot)"
+  fi
+  
+  # Configure log retention (30 days per SEC-014)
+  local auditd_conf="/etc/audit/auditd.conf"
+  
+  if [[ -f "${auditd_conf}" ]]; then
+    # Backup configuration
+    cp "${auditd_conf}" "${auditd_conf}.bak"
+    transaction_log "mv ${auditd_conf}.bak ${auditd_conf}"
+    
+    # Set log retention parameters
+    sed -i 's/^max_log_file_action = .*/max_log_file_action = ROTATE/' "${auditd_conf}"
+    sed -i 's/^num_logs = .*/num_logs = 30/' "${auditd_conf}"
+    sed -i 's/^max_log_file = .*/max_log_file = 50/' "${auditd_conf}"
+    
+    # Reload auditd configuration
+    if systemctl is-active auditd &> /dev/null; then
+      systemctl restart auditd 2>&1 | tee -a "${LOG_FILE}"
+    fi
+  fi
+  
+  log_info "Auditd configured successfully with 30-day log retention"
   return 0
 }
 
@@ -408,6 +520,12 @@ user_provisioning_execute() {
   # Configure passwordless sudo
   if ! user_provisioning_configure_sudo "${username}"; then
     log_error "Failed to configure sudo"
+    return 1
+  fi
+  
+  # Configure audit logging for sudo commands (T056)
+  if ! user_provisioning_configure_audit; then
+    log_error "Failed to configure audit logging"
     return 1
   fi
   
