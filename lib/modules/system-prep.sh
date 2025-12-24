@@ -62,6 +62,7 @@ system_prep_configure_apt() {
   log_info "Configuring APT for provisioning..."
   
   # Create custom APT configuration
+  # T132: Optimized with parallel downloads and HTTP pipelining per performance-specs.md
   cat > "${APT_CUSTOM_CONF}" <<'EOF'
 # VPS Provisioning APT Configuration
 # Optimized for automated provisioning with error recovery
@@ -81,6 +82,11 @@ Acquire::Retries "3";
 Acquire::http::Timeout "300";
 Acquire::https::Timeout "300";
 
+# T132: Parallel downloads for performance (3 concurrent per performance-specs.md)
+Acquire::Queue-Mode "host";
+Acquire::http::Pipeline-Depth "5";
+APT::Acquire::Max-Parallel "3";
+
 # Quiet mode for cleaner logs
 Dpkg::Options {
   "--force-confdef";
@@ -93,6 +99,7 @@ EOF
 
   transaction_log "create_file" "${APT_CUSTOM_CONF}" "rm -f '${APT_CUSTOM_CONF}'"
   log_info "APT configuration created at ${APT_CUSTOM_CONF}"
+  log_debug "APT configured with 3 parallel downloads and HTTP pipelining"
 }
 
 # Update APT package lists

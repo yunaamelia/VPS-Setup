@@ -7,9 +7,16 @@ setup() {
   # Define Project Root
   export PROJECT_ROOT="${BATS_TEST_DIRNAME}/../.."
   export LOG_FILE="$(mktemp)"
+  export CHECKPOINT_DIR="${BATS_TEST_TMPDIR}/checkpoints"
+  mkdir -p "$CHECKPOINT_DIR"
 
   # Source the verification module
   source "${PROJECT_ROOT}/lib/modules/verification.sh"
+}
+
+teardown() {
+  rm -f "$LOG_FILE"
+  rm -rf "$CHECKPOINT_DIR"
 }
 
 @test "verification_check_services: validates required services" {

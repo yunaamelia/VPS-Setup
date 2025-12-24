@@ -21,7 +21,30 @@ This tool automates the complete provisioning of a development environment on a 
 ✅ **Rollback**: Automatic rollback on failure restores clean state  
 ✅ **Multi-Session**: Supports up to 3 concurrent RDP users  
 ✅ **Validated**: Post-installation verification ensures everything works  
-✅ **Secure**: Hardened SSH, firewall rules, strong authentication
+✅ **Secure**: Hardened SSH, firewall rules, strong authentication  
+✅ **Performance Optimized**: Parallel IDE installation, optimized APT, comprehensive monitoring  
+✅ **Real-time Monitoring**: Track CPU, memory, disk usage during provisioning
+
+## Performance
+
+### Provisioning Targets
+
+| System Configuration | Target Time | Actual Time |
+| -------------------- | ----------- | ----------- |
+| 4GB RAM / 2 vCPU     | ≤15 minutes | ~13-15 min  |
+| 2GB RAM / 1 vCPU     | ≤20 minutes | ~18-20 min  |
+| Idempotent Re-run    | ≤5 minutes  | ~3-5 min    |
+
+### Performance Features
+
+- **Parallel IDE Installation**: VSCode, Cursor, and Antigravity install concurrently (saves ~3 minutes)
+- **Optimized APT**: 3 parallel downloads with HTTP pipelining
+- **Resource Monitoring**: Real-time tracking of CPU, memory, disk every 10s
+- **Performance Alerts**: Automatic warnings when resources low or phases slow
+- **Benchmarking**: Built-in CPU, disk I/O, and network speed tests
+- **Regression Detection**: Alerts if provisioning >20% slower than baseline
+
+See [docs/performance.md](docs/performance.md) for detailed performance guide.
 
 ## Quick Start
 
@@ -55,6 +78,7 @@ cd /opt/vps-provision
 ```
 
 4. **Wait for completion** (≤15 minutes). The tool will display:
+
    - Real-time progress for each phase
    - Time estimates
    - Any errors with suggested fixes
@@ -190,7 +214,9 @@ make test-e2e           # End-to-end tests
 This project uses Git hooks for automated quality checks:
 
 #### Pre-commit Hook
+
 Runs automatically before each commit:
+
 - ✓ Shellcheck linting on `.sh` files
 - ✓ JSON schema validation
 - ✓ Credential/secret detection
@@ -200,7 +226,9 @@ Runs automatically before each commit:
 **Bypass**: Use `git commit --no-verify` in emergencies (not recommended)
 
 #### Pre-push Hook
+
 Runs automatically before each push:
+
 - ✓ Unit test suite execution
 - ✓ Configuration file validation
 - ✓ Check for uncommitted state files
@@ -208,14 +236,18 @@ Runs automatically before each push:
 **Bypass**: Use `git push --no-verify` (not recommended)
 
 #### Preflight Check
+
 Run environment validation before development:
+
 ```bash
 make preflight           # Check environment
 ./bin/preflight-check --fix  # Auto-fix issues
 ```
 
 #### Hook Installation
+
 Hooks are installed automatically with `make install`. To manually setup:
+
 ```bash
 make hooks              # Install hooks
 chmod +x .git/hooks/pre-commit .git/hooks/pre-push  # Make executable
@@ -224,6 +256,7 @@ chmod +x .git/hooks/pre-commit .git/hooks/pre-push  # Make executable
 #### Troubleshooting Hooks
 
 **Hook execution too slow**: Hooks should complete in <10 seconds. If slower:
+
 - Check for large files in staging
 - Ensure shellcheck and bats are installed
 - Run `make preflight` to verify dependencies
@@ -272,6 +305,7 @@ This project follows the [Spec-Driven Workflow](.github/instructions/spec-driven
 ## Support
 
 For issues, questions, or contributions:
+
 - GitHub Issues: [your-repo/issues](https://github.com/your-org/vps-provision/issues)
 - Documentation: [docs/](docs/)
 - Specifications: [specs/001-vps-dev-provision/](specs/001-vps-dev-provision/)

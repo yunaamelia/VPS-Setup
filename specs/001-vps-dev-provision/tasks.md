@@ -364,26 +364,26 @@
 
 ### Performance Implementation
 
-- [ ] T130 Implement phase timing instrumentation per performance-specs.md, log start/end times, calculate durations, track against targets
-- [ ] T131 Implement parallel IDE installation (T039-T041 in parallel) to save 3 minutes per performance-specs.md §Parallel Installation
-- [ ] T132 Optimize APT operations: configure 3 parallel downloads per performance-specs.md, enable HTTP pipelining, set appropriate timeouts
-- [ ] T133 Implement resource monitoring: track CPU%, RAM usage, disk I/O every 10s per performance-specs.md §Resource Monitoring
-- [ ] T134 Implement performance alerts when thresholds exceeded (memory <500MB, disk <5GB, phase >150% estimate)
+- [x] T130 Implement phase timing instrumentation per performance-specs.md, log start/end times, calculate durations, track against targets
+- [x] T131 Implement parallel IDE installation (T039-T041 in parallel) to save 3 minutes per performance-specs.md §Parallel Installation
+- [x] T132 Optimize APT operations: configure 3 parallel downloads per performance-specs.md, enable HTTP pipelining, set appropriate timeouts
+- [x] T133 Implement resource monitoring: track CPU%, RAM usage, disk I/O every 10s per performance-specs.md §Resource Monitoring
+- [x] T134 Implement performance alerts when thresholds exceeded (memory <500MB, disk <5GB, phase >150% estimate)
 
 ### Performance Testing
 
-- [ ] T135 Create performance benchmark suite in `lib/utils/benchmark.sh`: CPU test, disk I/O test, network speed test
-- [ ] T136 Create performance test to validate provisioning ≤15 minutes on 4GB/2vCPU per SC-004
-- [ ] T137 Create performance test for RDP initialization ≤10 seconds per NFR-002
-- [ ] T138 Create performance test for IDE launch ≤10 seconds per NFR-003
-- [ ] T139 Create regression detection test: run provisioning, compare against baseline, fail if >20% slower per performance-specs.md
+- [x] T135 Create performance benchmark suite in `lib/utils/benchmark.sh`: CPU test, disk I/O test, network speed test
+- [x] T136 Create performance test to validate provisioning ≤15 minutes on 4GB/2vCPU per SC-004
+- [x] T137 Create performance test for RDP initialization ≤10 seconds per NFR-002
+- [x] T138 Create performance test for IDE launch ≤10 seconds per NFR-003
+- [x] T139 Create regression detection test: run provisioning, compare against baseline, fail if >20% slower per performance-specs.md
 
 ### Monitoring & Reporting
 
-- [ ] T140 Implement metrics collection per performance-specs.md: timing, resources, network, I/O, application, system metrics
-- [ ] T141 Generate performance report in JSON format with all metrics
-- [ ] T142 Implement CSV logging for time-series data (resources.csv, timing.csv)
-- [ ] T143 Create performance comparison tool to compare runs against baseline
+- [x] T140 Implement metrics collection per performance-specs.md: timing, resources, network, I/O, application, system metrics
+- [x] T141 Generate performance report in JSON format with all metrics
+- [x] T142 Implement CSV logging for time-series data (resources.csv, timing.csv)
+- [x] T143 Create performance comparison tool to compare runs against baseline
 
 **Checkpoint**: Performance targets met, monitoring operational
 
