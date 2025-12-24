@@ -206,57 +206,57 @@
 
 ### Rollback Implementation
 
-- [ ] T069 [RR-001, RR-002] Implement LIFO rollback mechanism in `lib/core/rollback.sh` to handle package uninstallation, restore configuration files from backups, remove created users/directories, clean temporary files per RR-015
-- [ ] T070 [RR-003, RR-029] Implement rollback verification to check for residual files, validate system state clean, ensure no configuration remnants
-- [ ] T071 [RR-002, RR-029] Create rollback test in `tests/integration/test_rollback.bats` to trigger failure at each phase, verify complete rollback, ensure system can be re-provisioned after rollback
-- [ ] T071a [RR-004] Enhance all module functions to create `.bak` backups of configuration files before any modification
-- [ ] T071b [RR-005] Enhance transaction logger (T012) to record all actions with rollback commands for precise restoration
+- [x] T069 [RR-001, RR-002] Implement LIFO rollback mechanism in `lib/core/rollback.sh` to handle package uninstallation, restore configuration files from backups, remove created users/directories, clean temporary files per RR-015
+- [x] T070 [RR-003, RR-029] Implement rollback verification to check for residual files, validate system state clean, ensure no configuration remnants
+- [x] T071 [RR-002, RR-029] Create rollback test in `tests/integration/test_rollback.bats` to trigger failure at each phase, verify complete rollback, ensure system can be re-provisioned after rollback
+- [x] T071a [RR-004] Enhance all module functions to create `.bak` backups of configuration files before any modification
+- [x] T071b [RR-005] Enhance transaction logger (T012) to record all actions with rollback commands for precise restoration
 
 ### Error Detection & Classification
 
-- [ ] T072 [RR-006, RR-007, RR-009] Implement error detection framework in `lib/core/error-handler.sh`: classify errors (CRITICAL, RETRYABLE, WARNING), capture full stderr/stdout context, detect failure signatures (E_NETWORK, E_DISK, E_LOCK, E_PKG_CORRUPT)
-- [ ] T072a [RR-008] Implement exit code checking wrapper in error-handler.sh to validate all shell commands, whitelist known acceptable non-zero codes
-- [ ] T073 [RR-010] Implement retry logic for RETRYABLE errors with exponential backoff (3 retries, starting at 2s) in error-handler.sh
-- [ ] T074 [RR-011, RR-012] Implement circuit breaker for repeated network failures to fail fast, ensure Critical errors abort immediately
+- [x] T072 [RR-006, RR-007, RR-009] Implement error detection framework in `lib/core/error-handler.sh`: classify errors (CRITICAL, RETRYABLE, WARNING), capture full stderr/stdout context, detect failure signatures (E_NETWORK, E_DISK, E_LOCK, E_PKG_CORRUPT)
+- [x] T072a [RR-008] Implement exit code checking wrapper in error-handler.sh to validate all shell commands, whitelist known acceptable non-zero codes
+- [x] T073 [RR-010] Implement retry logic for RETRYABLE errors with exponential backoff (3 retries, starting at 2s) in error-handler.sh
+- [x] T074 [RR-011, RR-012] Implement circuit breaker for repeated network failures to fail fast, ensure Critical errors abort immediately
 
 ### Resource Management
 
-- [ ] T075 [RR-014] Implement pre-flight resource check in validator.sh: minimum disk space (25GB), minimum RAM (2GB), network bandwidth test per performance-specs.md
-- [ ] T076 [RR-016] Implement disk space monitoring during provisioning, attempt `apt-get clean` if space low, abort if <5GB available
-- [ ] T077 [RR-014, RR-016] Create resource exhaustion test to simulate low disk/memory conditions, verify graceful handling
-- [ ] T077a [RR-013] Implement stale lock file handler in package-manager.py: detect /var/lib/dpkg/lock, verify owning process dead, attempt safe release
-- [ ] T077b [RR-015] Implement cleanup handler to remove all temporary files in /tmp and cache directories on exit (success or failure)
+- [x] T075 [RR-014] Implement pre-flight resource check in validator.sh: minimum disk space (25GB), minimum RAM (2GB), network bandwidth test per performance-specs.md
+- [x] T076 [RR-016] Implement disk space monitoring during provisioning, attempt `apt-get clean` if space low, abort if <5GB available
+- [x] T077 [RR-014, RR-016] Create resource exhaustion test to simulate low disk/memory conditions, verify graceful handling
+- [x] T077a [RR-013] Implement stale lock file handler in package-manager.py: detect /var/lib/dpkg/lock, verify owning process dead, attempt safe release
+- [x] T077b [RR-015] Implement cleanup handler to remove all temporary files in /tmp and cache directories on exit (success or failure)
 
 ### Network & Package Recovery
 
-- [ ] T078 [RR-017] Implement download resume support with `wget -c` for interrupted downloads, fallback to clean retry if resume unsupported
-- [ ] T079 [RR-018] Implement repository connectivity check in package-manager.py, test mirror availability before package installation, fallback mirrors on failure
-- [ ] T080 [RR-019] Implement dependency resolution with `apt-get --fix-broken install` in package-manager.py before aborting on conflicts
-- [ ] T081 [RR-017, RR-018, RR-019] Create network failure test to simulate timeouts, repository unavailability, dependency conflicts, verify retry and recovery
+- [x] T078 [RR-017] Implement download resume support with `wget -c` for interrupted downloads, fallback to clean retry if resume unsupported
+- [x] T079 [RR-018] Implement repository connectivity check in package-manager.py, test mirror availability before package installation, fallback mirrors on failure
+- [x] T080 [RR-019] Implement dependency resolution with `apt-get --fix-broken install` in package-manager.py before aborting on conflicts
+- [x] T081 [RR-017, RR-018, RR-019] Create network failure test to simulate timeouts, repository unavailability, dependency conflicts, verify retry and recovery
 
 ### State Consistency & Concurrency
 
-- [ ] T081a [RR-020] Implement atomic file write operations: write to temp file, then rename to ensure consistency
-- [ ] T081b [RR-021] Implement post-install validation in all modules: version check, executable presence, immediate verification after each component
-- [ ] T081c [RR-022] Implement global lock file mechanism in `/var/lock/vps-provision.lock` to prevent concurrent provisioning runs
+- [x] T081a [RR-020] Implement atomic file write operations: write to temp file, then rename to ensure consistency
+- [x] T081b [RR-021] Implement post-install validation in all modules: version check, executable presence, immediate verification after each component
+- [x] T081c [RR-022] Implement global lock file mechanism in `/var/lock/vps-provision.lock` to prevent concurrent provisioning runs
 
 ### Service & User Recovery
 
-- [ ] T081d [RR-023] Enhance user-provisioning.sh to check for existing users/groups before creation, handle idempotency correctly
-- [ ] T081e [RR-024] Implement service restart retry logic: attempt restart up to 3 times with 5s delay before declaring failure
-- [ ] T081f [RR-025] Implement port conflict detection for port 3389, report clear error, attempt to stop conflicting service if safe
+- [x] T081d [RR-023] Enhance user-provisioning.sh to check for existing users/groups before creation, handle idempotency correctly
+- [x] T081e [RR-024] Implement service restart retry logic: attempt restart up to 3 times with 5s delay before declaring failure
+- [x] T081f [RR-025] Implement port conflict detection for port 3389, report clear error, attempt to stop conflicting service if safe
 
 ### System Interruptions
 
-- [ ] T082 [RR-026] Implement signal handlers (SIGINT, SIGTERM) in main CLI to perform cleanup and safe exit on interruption
-- [ ] T083 [RR-027] Implement session persistence using systemd unit or nohup wrapper to survive SSH disconnects
-- [ ] T084 [RR-028] Implement power-loss recovery: check transaction journal on startup, determine if cleanup/rollback needed
-- [ ] T085 [RR-026, RR-027, RR-028] Create interruption test to kill provisioning at random points, disconnect SSH, verify recovery on restart
+- [x] T082 [RR-026] Implement signal handlers (SIGINT, SIGTERM) in main CLI to perform cleanup and safe exit on interruption
+- [x] T083 [RR-027] Implement session persistence using systemd unit or nohup wrapper to survive SSH disconnects
+- [x] T084 [RR-028] Implement power-loss recovery: check transaction journal on startup, determine if cleanup/rollback needed
+- [x] T085 [RR-026, RR-027, RR-028] Create interruption test to kill provisioning at random points, disconnect SSH, verify recovery on restart
 
 ### Verification & Dry-Run
 
-- [ ] T085a [RR-030] Enhance dry-run mode (T023) to audit system state without changes, report what would be done
-- [ ] T085b [RR-029] Create rollback verification test to ensure clean state after rollback, no residual files or configurations
+- [x] T085a [RR-030] Enhance dry-run mode (T023) to audit system state without changes, report what would be done
+- [x] T085b [RR-029] Create rollback verification test to ensure clean state after rollback, no residual files or configurations
 
 **Checkpoint**: All error handling and recovery mechanisms operational
 

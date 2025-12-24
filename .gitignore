@@ -17,6 +17,13 @@ htmlcov/
 __pycache__/
 .pytest_cache/
 .bats-*/
+*.test
+*.prof
+.tox/
+.nox/
+.mypy_cache/
+.dmypy.json
+dmypy.json
 
 # Temporary files
 tmp/
@@ -24,6 +31,8 @@ temp/
 *.bak
 *.backup
 ~*
+*.orig
+*.rej
 
 # Build artifacts
 dist/

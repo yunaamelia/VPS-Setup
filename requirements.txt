@@ -1,0 +1,10 @@
+# Python dependencies for VPS Provisioning System
+# Install with: pip3 install -r requirements.txt
+
+# System utilities
+psutil>=5.9.0        # Process and system monitoring for lock detection
+
+# Development dependencies (optional)
+# pytest>=7.4.0      # Testing framework
+# pylint>=2.17.0     # Code linting
+# black>=23.0.0      # Code formatting
