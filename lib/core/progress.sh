@@ -4,6 +4,12 @@
 
 set -euo pipefail
 
+# Prevent multiple sourcing
+if [[ -n "${_PROGRESS_SH_LOADED:-}" ]]; then
+  return 0
+fi
+readonly _PROGRESS_SH_LOADED=1
+
 # Source logger for output
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/core/logger.sh

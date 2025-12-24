@@ -9,6 +9,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/core/logger.sh
 source "${SCRIPT_DIR}/logger.sh"
 
+# Prevent multiple sourcing
+if [[ -n "${_CHECKPOINT_SH_LOADED:-}" ]]; then
+  return 0
+fi
+readonly _CHECKPOINT_SH_LOADED=1
+
 # Checkpoint directory
 readonly CHECKPOINT_DIR="${CHECKPOINT_DIR:-/var/vps-provision/checkpoints}"
 

@@ -30,10 +30,11 @@ source "${LIB_DIR}/core/transaction.sh"
 source "${LIB_DIR}/core/progress.sh"
 
 # Module constants
-readonly SYSTEM_PREP_PHASE="system-prep"
-readonly APT_CONF_DIR="/etc/apt/apt.conf.d"
-readonly APT_CUSTOM_CONF="${APT_CONF_DIR}/99vps-provision"
-readonly UNATTENDED_UPGRADES_CONF="${APT_CONF_DIR}/50unattended-upgrades"
+# Module constants
+readonly SYSTEM_PREP_PHASE="${SYSTEM_PREP_PHASE:-system-prep}"
+readonly APT_CONF_DIR="${APT_CONF_DIR:-/etc/apt/apt.conf.d}"
+readonly APT_CUSTOM_CONF="${APT_CUSTOM_CONF:-${APT_CONF_DIR}/99vps-provision}"
+readonly UNATTENDED_UPGRADES_CONF="${UNATTENDED_UPGRADES_CONF:-${APT_CONF_DIR}/50unattended-upgrades}"
 
 # Core packages required for provisioning
 readonly -a CORE_PACKAGES=(

@@ -87,44 +87,44 @@
 
 ### Desktop Environment Module
 
-- [ ] T027 [US1] Implement desktop install module in `lib/modules/desktop-env.sh` to install task-xfce-desktop and xfce4-goodies, configure LightDM display manager, set XFCE as default session, apply customizations (theme, panel, terminal)
-- [ ] T028 [US1] Create desktop configuration templates in `config/desktop/` for XFCE panel, terminal, theme settings per installation-specs.md
-- [ ] T029 [US1] Create integration test in `tests/integration/test_desktop_rdp.bats` to verify XFCE installation, LightDM service running, desktop memory usage ≤500MB
-- [ ] T030 [US1] Implement checkpoint creation for desktop-install phase
+- [X] T027 [US1] Implement desktop install module in `lib/modules/desktop-env.sh` to install task-xfce-desktop and xfce4-goodies, configure LightDM display manager, set XFCE as default session, apply customizations (theme, panel, terminal)
+- [X] T028 [US1] Create desktop configuration templates in `config/desktop/` for XFCE panel, terminal, theme settings per installation-specs.md
+- [X] T029 [US1] Create integration test in `tests/integration/test_desktop_rdp.bats` to verify XFCE installation, LightDM service running, desktop memory usage ≤500MB
+- [X] T030 [US1] Implement checkpoint creation for desktop-install phase
 
 ### RDP Server Module
 
-- [ ] T031 [US1] Implement RDP config module in `lib/modules/rdp-server.sh` to install xrdp package, generate self-signed TLS certificates, configure xrdp.ini for multi-session support per installation-specs.md, configure sesman.ini for session persistence, enable and start xrdp service
-- [ ] T032 [US1] Create firewall rules in RDP module to enable ufw, allow port 22 (SSH) and 3389 (RDP), deny all other incoming traffic
-- [ ] T033 [US1] Create integration test to verify xrdp service active, port 3389 listening, TLS certificates exist with correct permissions, RDP session initialization ≤10 seconds
-- [ ] T034 [US1] Implement checkpoint creation for rdp-config phase
+- [X] T031 [US1] Implement RDP config module in `lib/modules/rdp-server.sh` to install xrdp package, generate self-signed TLS certificates, configure xrdp.ini for multi-session support per installation-specs.md, configure sesman.ini for session persistence, enable and start xrdp service
+- [X] T032 [US1] Create firewall rules in RDP module to enable ufw, allow port 22 (SSH) and 3389 (RDP), deny all other incoming traffic
+- [X] T033 [US1] Create integration test to verify xrdp service active, port 3389 listening, TLS certificates exist with correct permissions, RDP session initialization ≤10 seconds
+- [X] T034 [US1] Implement checkpoint creation for rdp-config phase
 
 ### User Provisioning Module
 
-- [ ] T035 [US1] Implement user provisioning module in `lib/modules/user-provisioning.sh` to create developer user account "devuser", configure passwordless sudo, add user to groups (sudo, audio, video, dialout), generate secure random password, force password change on first login
-- [ ] T036 [US1] Create .xsession file in user home directory for XFCE compatibility with xrdp
-- [ ] T037 [US1] Create integration test to verify user exists with UID ≥1000, sudo access works without password, user in correct groups, home directory permissions correct
-- [ ] T038 [US1] Implement checkpoint creation for user-creation phase
+- [X] T035 [US1] Implement user provisioning module in `lib/modules/user-provisioning.sh` to create developer user account "devuser", configure passwordless sudo, add user to groups (sudo, audio, video, dialout), generate secure random password, force password change on first login
+- [X] T036 [US1] Create .xsession file in user home directory for XFCE compatibility with xrdp
+- [X] T037 [US1] Create integration test to verify user exists with UID ≥1000, sudo access works without password, user in correct groups, home directory permissions correct
+- [X] T038 [US1] Implement checkpoint creation for user-creation phase
 
 ### IDE Installation Modules
 
-- [ ] T039 [P] [US1] Implement VSCode module in `lib/modules/ide-vscode.sh` to add Microsoft GPG key and repository, install code package, verify executable exists, create desktop launcher, test launch time ≤10 seconds
-- [ ] T040 [P] [US1] Implement Cursor module in `lib/modules/ide-cursor.sh` to download Cursor .deb or AppImage, install with fallback strategy, verify executable, create desktop launcher, test launch
-- [ ] T041 [P] [US1] Implement Antigravity module in `lib/modules/ide-antigravity.sh` to fetch latest AppImage from GitHub, install to /opt/antigravity, create desktop launcher and CLI alias, verify launch
-- [ ] T042 [US1] Create integration test in `tests/integration/test_ide_install.bats` to verify all IDEs executable, desktop launchers exist, launch tests pass, no missing dependencies
-- [ ] T043 [US1] Implement checkpoint creation for each IDE phase
+- [X] T039 [P] [US1] Implement VSCode module in `lib/modules/ide-vscode.sh` to add Microsoft GPG key and repository, install code package, verify executable exists, create desktop launcher, test launch time ≤10 seconds
+- [X] T040 [P] [US1] Implement Cursor module in `lib/modules/ide-cursor.sh` to download Cursor .deb or AppImage, install with fallback strategy, verify executable, create desktop launcher, test launch
+- [X] T041 [P] [US1] Implement Antigravity module in `lib/modules/ide-antigravity.sh` to fetch latest AppImage from GitHub, install to /opt/antigravity, create desktop launcher and CLI alias, verify launch
+- [X] T042 [US1] Create integration test in `tests/integration/test_ide_install.bats` to verify all IDEs executable, desktop launchers exist, launch tests pass, no missing dependencies
+- [X] T043 [US1] Implement checkpoint creation for each IDE phase
 
 ### Terminal Enhancement Module
 
-- [ ] T044 [US1] Implement terminal setup module in `lib/modules/terminal-setup.sh` to install bash-completion, configure git aliases (st, ci, co, br, lg), set colored PS1 prompt, configure .bashrc with developer-friendly settings
-- [ ] T045 [US1] Create integration test to verify bash-completion installed, git aliases work, prompt includes git branch info
-- [ ] T046 [US1] Implement checkpoint creation for terminal-setup phase
+- [X] T044 [US1] Implement terminal setup module in `lib/modules/terminal-setup.sh` to install bash-completion, configure git aliases (st, ci, co, br, lg), set colored PS1 prompt, configure .bashrc with developer-friendly settings
+- [X] T045 [US1] Create integration test to verify bash-completion installed, git aliases work, prompt includes git branch info
+- [X] T046 [US1] Implement checkpoint creation for terminal-setup phase
 
 ### Development Tools Module
 
-- [ ] T047 [US1] Implement dev tools module in `lib/modules/dev-tools.sh` to install git, configure global git settings, install common development utilities (vim, curl, jq, htop, tree), verify all tools executable
-- [ ] T048 [US1] Create integration test to verify all dev tools installed and functional
-- [ ] T049 [US1] Implement checkpoint creation for dev-tools phase
+- [X] T047 [US1] Implement dev tools module in `lib/modules/dev-tools.sh` to install git, configure global git settings, install common development utilities (vim, curl, jq, htop, tree), verify all tools executable
+- [X] T048 [US1] Create integration test to verify all dev tools installed and functional
+- [X] T049 [US1] Implement checkpoint creation for dev-tools phase
 
 ### Verification & Validation
 

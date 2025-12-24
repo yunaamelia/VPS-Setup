@@ -1,0 +1,33 @@
+[Configuration]
+# Terminal color scheme optimized for development
+ColorForeground=#ffffff
+ColorBackground=#2e3436
+ColorCursor=#8ae234
+ColorPalette=#2e3436;#cc0000;#4e9a06;#c4a000;#3465a4;#75507b;#06989a;#d3d7cf;#555753;#ef2929;#8ae234;#fce94f;#729fcf;#ad7fa8;#34e2e2;#eeeeec
+
+# Font configuration
+FontName=Monospace 10
+FontAllowBold=TRUE
+
+# Scrollback and behavior
+ScrollingLines=10000
+ScrollingOnOutput=FALSE
+ScrollingOnKeystroke=TRUE
+ScrollingBar=TERMINAL_SCROLLBAR_RIGHT
+
+# Bell and cursor
+MiscBell=FALSE
+MiscCursorBlinks=FALSE
+MiscCursorShape=TERMINAL_CURSOR_SHAPE_BLOCK
+
+# Tab behavior
+TabActivityColor=#dc143c
+MiscTabCloseButtons=TRUE
+MiscTabCloseMiddleClick=TRUE
+MiscTabPosition=GTK_POS_TOP
+
+# Command and shortcuts
+CommandLoginShell=FALSE
+ShortcutsNoMenukey=TRUE
+ShortcutsNoMnemonics=FALSE
+ShortcutsNoHelpkey=TRUE

@@ -50,6 +50,8 @@ install: ## Install dependencies (bats, python requirements)
 		echo "Installing Python dependencies..."; \
 		$(PYTHON) -m pip install --user -r requirements.txt; \
 	fi
+	@printf "$(COLOR_YELLOW)Setting up Git hooks...$(COLOR_RESET)\n"
+	@chmod +x .git/hooks/pre-commit .git/hooks/pre-push 2>/dev/null || echo "Git hooks not found (run in git repository)"
 	@printf "$(COLOR_GREEN)Dependencies installed successfully!$(COLOR_RESET)\n"
 
 test: test-unit test-integration test-contract ## Run all tests
@@ -110,6 +112,19 @@ format: ## Format shell scripts with shfmt
 check-prerequisites: ## Check if system meets prerequisites
 	@printf "$(COLOR_YELLOW)Checking prerequisites...$(COLOR_RESET)\n"
 	@bash -c 'source $(LIB_DIR)/core/validator.sh && validator_check_prerequisites' || echo "Prerequisites not met"
+
+hooks: ## Install Git hooks
+	@printf "$(COLOR_YELLOW)Installing Git hooks...$(COLOR_RESET)\n"
+	@chmod +x .git/hooks/pre-commit .git/hooks/pre-push 2>/dev/null || true
+	@if [ -x .git/hooks/pre-commit ]; then \
+		printf "$(COLOR_GREEN)✓ Pre-commit hook installed$(COLOR_RESET)\n"; \
+	fi
+	@if [ -x .git/hooks/pre-push ]; then \
+		printf "$(COLOR_GREEN)✓ Pre-push hook installed$(COLOR_RESET)\n"; \
+	fi
+
+preflight: ## Run preflight environment checks
+	@bash bin/preflight-check
 
 verify: ## Verify provisioned VPS installation
 	@printf "$(COLOR_YELLOW)Verifying installation...$(COLOR_RESET)\n"

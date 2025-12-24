@@ -214,7 +214,23 @@ transaction_record_config_change() {
   transaction_record "Configuration: $description" "$restore_cmd"
 }
 
-# Validate transaction log integrity
+# Backwards compatibility / Shim for transaction_log
+transaction_log() {
+  if [[ $# -eq 1 ]]; then
+    # format: transaction_log "rollback_cmd"
+    transaction_record "System Action" "$1"
+  elif [[ $# -eq 2 ]]; then
+     # format: transaction_log "action" "rollback_cmd"
+     transaction_record "$1" "$2"
+  elif [[ $# -ge 3 ]]; then
+    # format: transaction_log "type" "subject" "rollback"
+    transaction_record "$1: $2" "$3"
+  else
+    log_error "Invalid arguments to transaction_log"
+    return 1
+  fi
+}
+
 transaction_validate() {
   if [[ ! -f "$TRANSACTION_LOG" ]]; then
     log_warning "Transaction log not found"

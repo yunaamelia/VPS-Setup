@@ -1,0 +1,459 @@
+#!/bin/bash
+# User Provisioning Module
+# Creates developer user account with passwordless sudo privileges
+# Includes group membership, password generation, and .xsession configuration
+#
+# Usage:
+#   source lib/modules/user-provisioning.sh
+#   user_provisioning_execute
+#
+# Dependencies:
+#   - lib/core/logger.sh
+#   - lib/core/checkpoint.sh
+#   - lib/core/transaction.sh
+#   - lib/core/progress.sh
+#   - lib/utils/credential-gen.py
+
+set -euo pipefail
+
+# Prevent multiple sourcing
+if [[ -n "${_USER_PROVISIONING_SH_LOADED:-}" ]]; then
+  return 0
+fi
+readonly _USER_PROVISIONING_SH_LOADED=1
+
+# Source dependencies
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="$(dirname "${SCRIPT_DIR}")"
+source "${LIB_DIR}/core/logger.sh"
+source "${LIB_DIR}/core/checkpoint.sh"
+source "${LIB_DIR}/core/transaction.sh"
+source "${LIB_DIR}/core/progress.sh"
+
+# Module constants
+readonly USER_PROV_PHASE="${USER_PROV_PHASE:-user-creation}"
+readonly DEFAULT_USERNAME="${DEFAULT_USERNAME:-devuser}"
+readonly DEVUSERS_GROUP="${DEVUSERS_GROUP:-devusers}"
+readonly REQUIRED_GROUPS=(sudo audio video dialout plugdev)
+
+# user_provisioning_check_prerequisites
+# Validates system is ready for user provisioning
+#
+# Returns:
+#   0 - Prerequisites met
+#   1 - Prerequisites failed
+user_provisioning_check_prerequisites() {
+  log_info "Checking user provisioning prerequisites"
+  
+  # Verify system-prep phase completed
+  if ! checkpoint_exists "system-prep"; then
+    log_error "System preparation must be completed before user provisioning"
+    return 1
+  fi
+  
+  # Verify Python credential generator exists
+  if [[ ! -f "${LIB_DIR}/utils/credential-gen.py" ]]; then
+    log_error "Credential generator utility not found"
+    return 1
+  fi
+  
+  # Verify Python 3 is available
+  if ! command -v python3 &> /dev/null; then
+    log_error "Python 3 not found (required for credential generation)"
+    return 1
+  fi
+  
+  log_info "Prerequisites check passed"
+  return 0
+}
+
+# user_provisioning_create_group
+# Creates the devusers group if it doesn't exist
+#
+# Returns:
+#   0 - Group created or exists
+#   1 - Group creation failed
+user_provisioning_create_group() {
+  log_info "Creating devusers group"
+  
+  if getent group "${DEVUSERS_GROUP}" &> /dev/null; then
+    log_info "Group ${DEVUSERS_GROUP} already exists"
+    return 0
+  fi
+  
+  if ! groupadd "${DEVUSERS_GROUP}" 2>&1 | tee -a "${LOG_FILE}"; then
+    log_error "Failed to create group: ${DEVUSERS_GROUP}"
+    return 1
+  fi
+  
+  transaction_log "groupdel ${DEVUSERS_GROUP}"
+  log_info "Group ${DEVUSERS_GROUP} created successfully"
+  return 0
+}
+
+# user_provisioning_create_user
+# Creates developer user account with home directory
+#
+# Args:
+#   $1 - Username (default: devuser)
+#
+# Returns:
+#   0 - User created or exists
+#   1 - User creation failed
+user_provisioning_create_user() {
+  local username="${1:-${DEFAULT_USERNAME}}"
+  log_info "Creating developer user: ${username}"
+  
+  if id "${username}" &> /dev/null; then
+    log_info "User ${username} already exists"
+    return 0
+  fi
+  
+  # Create user with home directory and bash shell
+  if ! useradd -m -s /bin/bash -g "${DEVUSERS_GROUP}" "${username}" 2>&1 | tee -a "${LOG_FILE}"; then
+    log_error "Failed to create user: ${username}"
+    return 1
+  fi
+  
+  transaction_log "userdel -r ${username}"
+  log_info "User ${username} created successfully"
+  return 0
+}
+
+# user_provisioning_add_to_groups
+# Adds user to required groups for development work
+#
+# Args:
+#   $1 - Username
+#
+# Returns:
+#   0 - Groups added successfully
+#   1 - Failed to add groups
+user_provisioning_add_to_groups() {
+  local username="$1"
+  log_info "Adding ${username} to required groups"
+  
+  for group in "${REQUIRED_GROUPS[@]}"; do
+    # Create group if it doesn't exist
+    if ! getent group "${group}" &> /dev/null; then
+      log_warning "Group ${group} does not exist, creating it"
+      if ! groupadd "${group}" 2>&1 | tee -a "${LOG_FILE}"; then
+        log_error "Failed to create group: ${group}"
+        return 1
+      fi
+      transaction_log "groupdel ${group}"
+    fi
+    
+    # Add user to group
+    if ! usermod -a -G "${group}" "${username}" 2>&1 | tee -a "${LOG_FILE}"; then
+      log_error "Failed to add ${username} to group: ${group}"
+      return 1
+    fi
+    
+    log_debug "Added ${username} to group: ${group}"
+  done
+  
+  log_info "User added to all required groups"
+  return 0
+}
+
+# user_provisioning_configure_sudo
+# Configures passwordless sudo with security lecture
+#
+# Args:
+#   $1 - Username
+#
+# Returns:
+#   0 - Sudo configured successfully
+#   1 - Sudo configuration failed
+user_provisioning_configure_sudo() {
+  local username="$1"
+  local sudoers_dir="${SUDOERS_DIR:-/etc/sudoers.d}"
+  local sudoers_file="${sudoers_dir}/80-${username}"
+  
+  log_info "Configuring passwordless sudo for ${username}"
+  
+  # Create sudoers entry with lecture enabled
+  cat > "${sudoers_file}" <<EOF
+# Sudoers configuration for developer user: ${username}
+# Created by VPS provisioning system
+# SEC-010: Enable sudo lecture for security awareness
+Defaults:${username} lecture="always"
+
+# Passwordless sudo for all commands
+${username} ALL=(ALL) NOPASSWD: ALL
+EOF
+  
+  # Validate sudoers syntax
+  if ! visudo -cf "${sudoers_file}"; then
+    log_error "Invalid sudoers syntax, removing file"
+    rm -f "${sudoers_file}"
+    return 1
+  fi
+  
+  # Set correct permissions
+  chmod 0440 "${sudoers_file}"
+  
+  transaction_log "rm -f ${sudoers_file}"
+  log_info "Passwordless sudo configured successfully"
+  return 0
+}
+
+# user_provisioning_generate_password
+# Generates strong random password and sets it for user
+#
+# Args:
+#   $1 - Username
+#
+# Returns:
+#   0 - Password generated and set
+#   1 - Password generation failed
+#
+# Outputs:
+#   Generated password to stdout
+user_provisioning_generate_password() {
+  local username="$1"
+  local password
+  
+  log_info "Generating secure password for ${username}"
+  
+  # Generate password using Python utility
+  password=$(python3 "${LIB_DIR}/utils/credential-gen.py" --length 20 --complexity high 2>&1)
+  
+  if [[ -z "${password}" || "${password}" == *"Error"* ]]; then
+    log_error "Failed to generate password"
+    return 1
+  fi
+  
+  # Set password for user
+  if ! echo "${username}:${password}" | chpasswd 2>&1 | tee -a "${LOG_FILE}"; then
+    log_error "Failed to set password for ${username}"
+    return 1
+  fi
+  
+  # Force password change on first login
+  if ! chage -d 0 "${username}" 2>&1 | tee -a "${LOG_FILE}"; then
+    log_error "Failed to set password expiration for ${username}"
+    return 1
+  fi
+  
+  log_info "Password generated and configured successfully"
+  
+  # Return password for display (security note: this is intentional per FR-027)
+  echo "${password}"
+  return 0
+}
+
+# user_provisioning_create_xsession
+# Creates .xsession file for XFCE compatibility with xrdp
+#
+# Args:
+#   $1 - Username
+#
+# Returns:
+#   0 - .xsession created successfully
+#   1 - .xsession creation failed
+user_provisioning_create_xsession() {
+  local username="$1"
+  local home_dir
+  
+  log_info "Creating .xsession file for ${username}"
+  
+  # Get user's home directory
+  home_dir=$(getent passwd "${username}" | cut -d: -f6)
+  
+  if [[ -z "${home_dir}" || ! -d "${home_dir}" ]]; then
+    log_error "Home directory not found for ${username}"
+    return 1
+  fi
+  
+  local xsession_file="${home_dir}/.xsession"
+  
+  # Create .xsession file for XFCE
+  cat > "${xsession_file}" <<'EOF'
+#!/bin/bash
+# XFCE session configuration for xrdp
+# Auto-generated by VPS provisioning system
+
+# Load system profile
+if [ -f /etc/profile ]; then
+  . /etc/profile
+fi
+
+# Load user profile
+if [ -f ~/.profile ]; then
+  . ~/.profile
+fi
+
+# Start XFCE desktop
+exec startxfce4
+EOF
+  
+  # Set executable permissions
+  chmod +x "${xsession_file}"
+  
+  # Set ownership
+  chown "${username}:${username}" "${xsession_file}"
+  
+  transaction_log "rm -f ${xsession_file}"
+  log_info ".xsession file created successfully"
+  return 0
+}
+
+# user_provisioning_verify
+# Verifies user account configuration
+#
+# Args:
+#   $1 - Username
+#
+# Returns:
+#   0 - Verification successful
+#   1 - Verification failed
+user_provisioning_verify() {
+  local username="$1"
+  log_info "Verifying user provisioning for ${username}"
+  
+  # Check user exists with UID >= 1000
+  local uid
+  uid=$(id -u "${username}" 2>/dev/null || echo 0)
+  
+  if [[ ${uid} -lt 1000 ]]; then
+    log_error "User ${username} has invalid UID: ${uid} (expected >= 1000)"
+    return 1
+  fi
+  
+  # Check user is in all required groups
+  local user_groups
+  user_groups=$(id -Gn "${username}" 2>/dev/null || echo "")
+  
+  for group in "${REQUIRED_GROUPS[@]}"; do
+    if ! echo "${user_groups}" | grep -qw "${group}"; then
+      log_error "User ${username} not in required group: ${group}"
+      return 1
+    fi
+  done
+  
+  # Check sudo configuration exists
+  local sudoers_dir="${SUDOERS_DIR:-/etc/sudoers.d}"
+  if [[ ! -f "${sudoers_dir}/80-${username}" ]]; then
+    log_error "Sudo configuration not found for ${username}"
+    return 1
+  fi
+  
+  # Check home directory permissions
+  local home_dir
+  home_dir=$(getent passwd "${username}" | cut -d: -f6)
+  
+  if [[ ! -d "${home_dir}" ]]; then
+    log_error "Home directory not found: ${home_dir}"
+    return 1
+  fi
+  
+  # Check .xsession file exists and is executable
+  if [[ ! -x "${home_dir}/.xsession" ]]; then
+    log_error ".xsession file not found or not executable"
+    return 1
+  fi
+  
+  log_info "User provisioning verification passed"
+  return 0
+}
+
+# user_provisioning_execute
+# Main entry point for user provisioning module
+#
+# Args:
+#   $1 - Username (optional, default: devuser)
+#
+# Returns:
+#   0 - Provisioning successful
+#   1 - Provisioning failed
+user_provisioning_execute() {
+  local username="${1:-${DEFAULT_USERNAME}}"
+  local password
+  
+  log_info "Starting user provisioning module"
+  progress_update "Creating developer user" 40
+  
+  # Check if already completed
+  if checkpoint_exists "${USER_PROV_PHASE}"; then
+    log_info "User provisioning already completed (checkpoint exists)"
+    return 0
+  fi
+  
+  # Prerequisites check
+  if ! user_provisioning_check_prerequisites; then
+    log_error "Prerequisites check failed"
+    return 1
+  fi
+  
+  # Create devusers group
+  if ! user_provisioning_create_group; then
+    log_error "Failed to create devusers group"
+    return 1
+  fi
+  
+  # Create user account
+  if ! user_provisioning_create_user "${username}"; then
+    log_error "Failed to create user account"
+    return 1
+  fi
+  
+  # Add to required groups
+  if ! user_provisioning_add_to_groups "${username}"; then
+    log_error "Failed to add user to groups"
+    return 1
+  fi
+  
+  # Configure passwordless sudo
+  if ! user_provisioning_configure_sudo "${username}"; then
+    log_error "Failed to configure sudo"
+    return 1
+  fi
+  
+  # Generate and set password
+  password=$(user_provisioning_generate_password "${username}")
+  if [[ $? -ne 0 || -z "${password}" ]]; then
+    log_error "Failed to generate password"
+    return 1
+  fi
+  
+  # Create .xsession file
+  if ! user_provisioning_create_xsession "${username}"; then
+    log_error "Failed to create .xsession file"
+    return 1
+  fi
+  
+  # Verify configuration
+  if ! user_provisioning_verify "${username}"; then
+    log_error "User provisioning verification failed"
+    return 1
+  fi
+  
+  # Create checkpoint
+  if ! checkpoint_create "${USER_PROV_PHASE}"; then
+    log_warning "Failed to create checkpoint (non-fatal)"
+  fi
+  
+  # Display credentials (FR-027: credentials must be displayed)
+  log_info "=================================="
+  log_info "Developer Account Created"
+  log_info "=================================="
+  log_info "Username: ${username}"
+  log_info "Password: ${password}"
+  log_info "Sudo: Passwordless (all commands)"
+  log_info "Groups: ${REQUIRED_GROUPS[*]}"
+  log_info ""
+  log_info "IMPORTANT: You will be required to change this password on first login"
+  log_info "=================================="
+  
+  progress_update "Developer user created" 45
+  log_info "User provisioning completed successfully"
+  
+  return 0
+}
+
+# If script is executed directly (not sourced), run main function
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  user_provisioning_execute "$@"
+fi

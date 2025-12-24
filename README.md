@@ -185,6 +185,53 @@ make test-e2e           # End-to-end tests
 
 ## Troubleshooting
 
+### Git Hooks
+
+This project uses Git hooks for automated quality checks:
+
+#### Pre-commit Hook
+Runs automatically before each commit:
+- ✓ Shellcheck linting on `.sh` files
+- ✓ JSON schema validation
+- ✓ Credential/secret detection
+- ✓ File permission verification
+- ✓ Shell script syntax checking
+
+**Bypass**: Use `git commit --no-verify` in emergencies (not recommended)
+
+#### Pre-push Hook
+Runs automatically before each push:
+- ✓ Unit test suite execution
+- ✓ Configuration file validation
+- ✓ Check for uncommitted state files
+
+**Bypass**: Use `git push --no-verify` (not recommended)
+
+#### Preflight Check
+Run environment validation before development:
+```bash
+make preflight           # Check environment
+./bin/preflight-check --fix  # Auto-fix issues
+```
+
+#### Hook Installation
+Hooks are installed automatically with `make install`. To manually setup:
+```bash
+make hooks              # Install hooks
+chmod +x .git/hooks/pre-commit .git/hooks/pre-push  # Make executable
+```
+
+#### Troubleshooting Hooks
+
+**Hook execution too slow**: Hooks should complete in <10 seconds. If slower:
+- Check for large files in staging
+- Ensure shellcheck and bats are installed
+- Run `make preflight` to verify dependencies
+
+**Shellcheck warnings**: Fix syntax issues or use `# shellcheck disable=SCXXXX` for false positives
+
+**Test failures**: Run `make test-unit` locally to identify failing tests before pushing
+
 ### Common Issues
 
 **Issue**: "Insufficient disk space"  

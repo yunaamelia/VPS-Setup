@@ -15,6 +15,13 @@ else
       return 1
     fi
   }
+
+  assert() {
+    if ! "$@"; then
+      echo "Assertion failed: $*" >&2
+      return 1
+    fi
+  }
   
   assert_failure() {
     if [[ "${status}" -eq 0 ]]; then
