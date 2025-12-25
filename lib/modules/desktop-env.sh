@@ -104,7 +104,7 @@ desktop_env_install_packages() {
 
   # Install XFCE packages
   for package in "${XFCE_PACKAGES[@]}"; do
-    if dpkg -l | grep -q "^ii  ${package}"; then
+    if dpkg -l "${package}" 2>/dev/null | grep -q "^ii"; then
       log_info "Package ${package} already installed"
       continue
     fi
@@ -123,7 +123,7 @@ desktop_env_install_packages() {
   # Verify critical components instead
   local critical_packages=("xfce4-session" "lightdm" "dbus-x11")
   for package in "${critical_packages[@]}"; do
-    if ! dpkg -l | grep -q "^ii  ${package}"; then
+    if ! dpkg -l "${package}" 2>/dev/null | grep -q "^ii"; then
       log_error "Critical package verification failed: ${package}"
       return 1
     fi
