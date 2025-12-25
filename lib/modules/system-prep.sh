@@ -514,7 +514,7 @@ system_prep_execute() {
   fi
 
   # Complete checkpoint
-  checkpoint_complete "${SYSTEM_PREP_PHASE}"
+  checkpoint_create "${SYSTEM_PREP_PHASE}"
 
   log_info "System preparation phase completed successfully"
   return 0
