@@ -298,12 +298,11 @@ desktop_env_validate_installation() {
 #   1 - Setup failed
 desktop_env_execute() {
   log_info "Starting desktop environment installation"
-  progress_start "Desktop Environment Setup"
+  progress_start_phase "desktop-env"
 
   # Check if already completed
   if checkpoint_exists "${DESKTOP_ENV_PHASE}"; then
     log_info "Desktop environment already installed (checkpoint exists)"
-    progress_complete "Desktop environment (cached)"
     return 0
   fi
 
@@ -321,7 +320,7 @@ desktop_env_execute() {
     return 1
   }
 
-  progress_complete "Desktop environment installed"
+  progress_complete_phase
   log_info "Desktop environment installation completed successfully"
   return 0
 }
