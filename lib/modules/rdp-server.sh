@@ -475,26 +475,27 @@ rdp_server_validate_installation() {
   fi
 
   # Verify key permissions (must be 600)
+  # Handle symlinks - check and set permissions on target file
+  local target_file="${KEY_FILE}"
+  if [[ -L "${KEY_FILE}" ]]; then
+    target_file=$(readlink -f "${KEY_FILE}")
+    log_debug "Key file is symlink: ${KEY_FILE} -> ${target_file}"
+  fi
+  
   local key_perms
-  key_perms=$(stat -c "%a" "${KEY_FILE}")
+  key_perms=$(stat -c "%a" "${target_file}")
   if [[ "${key_perms}" != "600" ]]; then
     log_warning "Incorrect key file permissions: ${key_perms}, fixing to 600"
     
-    # Check file attributes first
-    if command -v lsattr &>/dev/null; then
-      lsattr "${KEY_FILE}" 2>&1 | tee -a "${LOG_FILE}"
-    fi
-    
-    # Try multiple approaches to fix permissions
-    chmod 600 "${KEY_FILE}" 2>&1 | tee -a "${LOG_FILE}"
-    chattr -i "${KEY_FILE}" 2>/dev/null || true  # Remove immutable flag if set
-    chmod 600 "${KEY_FILE}" 2>&1 | tee -a "${LOG_FILE}"
+    # Set permissions on target file (works for both regular files and symlink targets)
+    chmod 600 "${target_file}" 2>&1 | tee -a "${LOG_FILE}"
     
     # Verify fix worked
-    key_perms=$(stat -c "%a" "${KEY_FILE}")
+    key_perms=$(stat -c "%a" "${target_file}")
     if [[ "${key_perms}" != "600" ]]; then
       log_error "Failed to fix key file permissions: still ${key_perms} (expected 600)"
-      log_error "File info: $(ls -la "${KEY_FILE}")"
+      log_error "Target file: ${target_file}"
+      log_error "File info: $(ls -la "${target_file}")"
       return 1
     fi
     log_info "Key file permissions corrected to 600"
