@@ -121,7 +121,11 @@ class PackageManager:
         Returns:
             Dict with repository check results
         """
-        result = {"all_accessible": True, "repositories": [], "failures": []}
+        result: Dict[str, Any] = {
+            "all_accessible": True,
+            "repositories": [],
+            "failures": [],
+        }
 
         try:
             # Get list of repositories
@@ -290,10 +294,10 @@ class PackageManager:
                 "dependencies_met": bool
             }
         """
-        result = {
+        result: Dict[str, Any] = {
             "installed": False,
             "version": None,
-            "files_intact": False,
+            "files_intact": None,
             "dependencies_met": False,
         }
 

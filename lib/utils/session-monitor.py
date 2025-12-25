@@ -20,7 +20,7 @@ import argparse
 import json
 import subprocess
 import sys
-from typing import Dict, List
+from typing import Any, Dict, List
 
 
 class SessionMonitor:
@@ -35,10 +35,10 @@ class SessionMonitor:
         MAX_MEMORY_MB - TARGET_BUFFER_MB
     ) / TARGET_SESSIONS  # ~1024MB
 
-    def __init__(self):
-        self.sessions: List[Dict] = []
+    def __init__(self) -> None:
+        self.sessions: List[Dict[str, Any]] = []
 
-    def get_active_sessions(self) -> List[Dict]:
+    def get_active_sessions(self) -> List[Dict[str, Any]]:
         """
         Get list of active xrdp sessions with resource usage
 
@@ -151,9 +151,8 @@ class SessionMonitor:
         # Check per-session memory usage
         sessions = self.get_active_sessions()
         for session in sessions:
-            if (
-                session["memory_mb"] > self.EXPECTED_PER_SESSION_MB * 1.5
-            ):  # 50% over expected
+            mem_mb = float(session["memory_mb"])
+            if mem_mb > self.EXPECTED_PER_SESSION_MB * 1.5:  # 50% over expected
                 expected_mb = self.EXPECTED_PER_SESSION_MB
                 print(
                     f"WARNING: Session {session['display']} using {session['memory_mb']}MB "

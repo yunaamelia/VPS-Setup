@@ -222,7 +222,7 @@ show_success_banner "$ip_address" "$rdp_port" "$username" "$password"
 Run Phase 9 integration tests:
 
 ```bash
-cd /home/racoon/vpsnew
+cd /home/raccoon/vpsnew
 bats tests/integration/test_ux_error_handling.bats
 ```
 

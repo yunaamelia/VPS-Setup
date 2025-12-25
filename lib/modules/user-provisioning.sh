@@ -366,6 +366,7 @@ user_provisioning_generate_password() {
   log_info "Password set successfully for ${username} (password: [REDACTED])"
 
   # SEC-004: Force password change on first login per requirement
+  # Note: 'chage' is the correct command name (change age)
   if ! chage -d 0 "${username}" 2>&1 | grep -v "password" | tee -a "${LOG_FILE}" >/dev/null; then
     log_error "Failed to set password expiration for ${username}"
     return 1

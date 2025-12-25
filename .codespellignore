@@ -1,0 +1,7 @@
+# .codespellignore - Words to ignore during spell checking
+
+# Linux/Unix commands (correct spellings)
+chage
+
+# Directory/file names
+racoon

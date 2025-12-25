@@ -214,11 +214,13 @@ spell-check: ## Check spelling with codespell
 	@if [ -n "$(VENV_BIN)" ] && command -v $(VENV_BIN)/codespell &> /dev/null; then \
 		$(VENV_BIN)/codespell $(SHELL_FILES) $(PYTHON_FILES) $(MARKDOWN_FILES) \
 		  --skip=".git,.cache,.venv,*.log" \
+		  --ignore-words=.codespellignore \
 		  --ignore-words-list="ans,iam,lis,ba" \
 		  --quiet-level=2 && echo "OK" || echo "OK (with warnings)"; \
 	elif command -v codespell &> /dev/null; then \
 		codespell $(SHELL_FILES) $(PYTHON_FILES) $(MARKDOWN_FILES) \
 		  --skip=".git,.cache,.venv,*.log" \
+		  --ignore-words=.codespellignore \
 		  --ignore-words-list="ans,iam,lis,ba" \
 		  --quiet-level=2 && echo "OK" || echo "OK (with warnings)"; \
 	else \

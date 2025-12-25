@@ -34,7 +34,7 @@ class HealthCheck:
 
     def __init__(self, verbose: bool = False):
         self.verbose = verbose
-        self.results = []
+        self.results: List[Dict[str, Any]] = []
 
     def run_command(self, cmd: List[str], check: bool = False) -> Tuple[bool, str, str]:
         """
@@ -53,7 +53,7 @@ class HealthCheck:
 
     def check_os_version(self) -> Dict[str, Any]:
         """Validate OS is Debian 13"""
-        check = {
+        check: Dict[str, Any] = {
             "name": "Operating System",
             "category": "system",
             "status": "unknown",
@@ -94,7 +94,7 @@ class HealthCheck:
 
     def check_resources(self) -> Dict[str, Any]:
         """Check system resources meet minimum requirements"""
-        check = {
+        check: Dict[str, Any] = {
             "name": "System Resources",
             "category": "system",
             "status": "unknown",
@@ -156,7 +156,7 @@ class HealthCheck:
 
     def check_service(self, service_name: str, display_name: str) -> Dict[str, Any]:
         """Check if systemd service is active"""
-        check = {
+        check: Dict[str, Any] = {
             "name": display_name,
             "category": "services",
             "status": "unknown",
@@ -182,7 +182,7 @@ class HealthCheck:
 
     def check_port(self, port: int, service_name: str) -> Dict[str, Any]:
         """Check if port is listening"""
-        check = {
+        check: Dict[str, Any] = {
             "name": f"Port {port} ({service_name})",
             "category": "network",
             "status": "unknown",
@@ -214,7 +214,7 @@ class HealthCheck:
         self, command: str, display_name: str, version_arg: str = "--version"
     ) -> Dict[str, Any]:
         """Check if executable exists and is runnable"""
-        check = {
+        check: Dict[str, Any] = {
             "name": display_name,
             "category": "software",
             "status": "unknown",
@@ -245,7 +245,7 @@ class HealthCheck:
 
     def check_user(self, username: str) -> Dict[str, Any]:
         """Check if user exists with correct configuration"""
-        check = {
+        check: Dict[str, Any] = {
             "name": f"User: {username}",
             "category": "users",
             "status": "unknown",
@@ -299,7 +299,7 @@ class HealthCheck:
 
     def check_file_exists(self, filepath: str, description: str) -> Dict[str, Any]:
         """Check if file exists"""
-        check = {
+        check: Dict[str, Any] = {
             "name": description,
             "category": "files",
             "status": "unknown",
@@ -386,7 +386,7 @@ def format_text_output(summary: Dict) -> str:
     output.append("")
 
     # Group by category
-    categories = {}
+    categories: Dict[str, List[Dict[str, Any]]] = {}
     for check in summary["checks"]:
         cat = check["category"]
         if cat not in categories:
