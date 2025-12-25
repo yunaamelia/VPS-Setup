@@ -110,12 +110,12 @@ desktop_env_install_packages() {
     fi
 
     log_info "Installing package: ${package}"
-    if ! apt-get install -y --no-install-recommends "${package}" 2>&1 | tee -a "${LOG_FILE}"; then
+    if ! apt-get install -y "${package}" 2>&1 | tee -a "${LOG_FILE}"; then
       log_error "Failed to install package: ${package}"
       return 1
     fi
 
-    transaction_log "apt-get remove -y ${package}"
+    transaction_record "Installed ${package}" "apt-get remove -y ${package}"
   done
 
   # Verify installations
