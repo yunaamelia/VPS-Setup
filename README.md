@@ -122,7 +122,7 @@ ssh root@your-vps-ip
 2. **Clone this repository:**
 
 ```bash
-git clone https://github.com/your-org/vps-provision.git /opt/vps-provision
+git clone https://github.com/yunaamelia/VPS-Setup.git /opt/vps-provision
 cd /opt/vps-provision
 ```
 
@@ -647,11 +647,11 @@ We welcome contributions! This project follows the [**Spec-Driven Workflow v1**]
 
 ```bash
 # Fork and clone the repository
-git clone https://github.com/your-username/vps-provision.git
-cd vps-provision
+git clone https://github.com/yunaamelia/VPS-Setup.git
+cd VPS-Setup
 
 # Add upstream remote
-git remote add upstream https://github.com/original-org/vps-provision.git
+git remote add upstream https://github.com/yunaamelia/VPS-Setup.git
 
 # Install dependencies and hooks
 make install
