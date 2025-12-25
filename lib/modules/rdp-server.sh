@@ -478,8 +478,15 @@ rdp_server_validate_installation() {
   local key_perms
   key_perms=$(stat -c "%a" "${KEY_FILE}")
   if [[ "${key_perms}" != "600" ]]; then
-    log_error "Incorrect key file permissions: ${key_perms} (expected 600)"
-    return 1
+    log_warning "Incorrect key file permissions: ${key_perms}, fixing to 600"
+    chmod 600 "${KEY_FILE}"
+    # Verify fix worked
+    key_perms=$(stat -c "%a" "${KEY_FILE}")
+    if [[ "${key_perms}" != "600" ]]; then
+      log_error "Failed to fix key file permissions: still ${key_perms} (expected 600)"
+      return 1
+    fi
+    log_info "Key file permissions corrected to 600"
   fi
 
   # Verify firewall rules
