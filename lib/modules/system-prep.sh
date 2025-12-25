@@ -52,7 +52,6 @@ readonly -a CORE_PACKAGES=(
   "gnupg"
   "lsb-release"
   "apt-transport-https"
-  "software-properties-common"
   "unattended-upgrades"
   "apt-listchanges"
 )
