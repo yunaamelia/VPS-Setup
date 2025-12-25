@@ -637,20 +637,8 @@ main() {
   source "${LIB_DIR}/modules/fail2ban.sh"
   source "${LIB_DIR}/modules/verification.sh"
   source "${LIB_DIR}/modules/summary-report.sh"
-  
-  # Register all phases with progress system
-  progress_register_phase "system-prep" 10
-  progress_register_phase "desktop-env" 25
-  progress_register_phase "user-provisioning" 5
-  progress_register_phase "rdp-server" 8
-  progress_register_phase "ide-vscode" 12
-  progress_register_phase "ide-cursor" 12
-  progress_register_phase "ide-antigravity" 12
-  progress_register_phase "terminal-setup" 4
-  progress_register_phase "dev-tools" 6
-  progress_register_phase "firewall" 2
-  progress_register_phase "fail2ban" 2
-  progress_register_phase "verification" 2
+  # Initialize progress tracking with phase count
+  progress_init 12
   
   # Execute provisioning phases
   local provisioning_failed=false
