@@ -1,7 +1,8 @@
 #!/bin/bash
 # IDE Antigravity Installation Module
-# Purpose: Install Antigravity IDE via AppImage from GitHub releases
+# Purpose: Install Antigravity IDE via official APT repository
 # Requirements: FR-019, FR-037, SC-009
+# Documentation: https://antigravity.google/download/linux
 
 set -euo pipefail
 
@@ -18,13 +19,11 @@ source "${LIB_DIR}/core/transaction.sh"
 
 # Constants
 readonly ANTIGRAVITY_CHECKPOINT="${ANTIGRAVITY_CHECKPOINT:-ide-antigravity}"
-# Direct download URL that auto-updates to latest version
-readonly ANTIGRAVITY_DOWNLOAD_URL="https://antigravity.google/download/linux"
-readonly ANTIGRAVITY_INSTALL_DIR="${ANTIGRAVITY_INSTALL_DIR:-/opt/antigravity}"
-readonly ANTIGRAVITY_DESKTOP="${ANTIGRAVITY_DESKTOP:-/usr/share/applications/antigravity.desktop}"
-readonly ANTIGRAVITY_APPIMAGE="${ANTIGRAVITY_APPIMAGE:-$ANTIGRAVITY_INSTALL_DIR/antigravity.AppImage}"
-readonly ANTIGRAVITY_ICON_URL="https://raw.githubusercontent.com/antigravity-code/antigravity/main/resources/icon.png"
-readonly ANTIGRAVITY_ICON_PATH="${ANTIGRAVITY_ICON_PATH:-/usr/share/pixmaps/antigravity.png}"
+readonly ANTIGRAVITY_GPG_URL="https://us-central1-apt.pkg.dev/doc/repo-signing-key.gpg"
+readonly ANTIGRAVITY_GPG_KEY="/etc/apt/keyrings/antigravity-repo-key.gpg"
+readonly ANTIGRAVITY_REPO="deb [signed-by=/etc/apt/keyrings/antigravity-repo-key.gpg] https://us-central1-apt.pkg.dev/projects/antigravity-auto-updater-dev/ antigravity-debian main"
+readonly ANTIGRAVITY_LIST="/etc/apt/sources.list.d/antigravity.list"
+readonly ANTIGRAVITY_DESKTOP="/usr/share/applications/antigravity.desktop"
 
 #######################################
 # Check prerequisites for Antigravity installation
@@ -45,7 +44,7 @@ ide_antigravity_check_prerequisites() {
   fi
 
   # Verify required commands
-  local required_cmds=("wget" "curl" "jq")
+  local required_cmds=("wget" "curl" "gpg" "apt-get")
   for cmd in "${required_cmds[@]}"; do
     if ! command -v "$cmd" &>/dev/null; then
       log_error "Required command not found: $cmd"
@@ -58,180 +57,132 @@ ide_antigravity_check_prerequisites() {
 }
 
 #######################################
-# Install FUSE for AppImage support
+# Add Antigravity GPG key
 # Globals:
-#   None
+#   ANTIGRAVITY_GPG_URL, ANTIGRAVITY_GPG_KEY
 # Arguments:
 #   None
 # Returns:
 #   0 on success, 1 on failure
 #######################################
-ide_antigravity_install_fuse() {
-  log_info "Ensuring FUSE is installed for AppImage support..."
+ide_antigravity_add_gpg_key() {
+  log_info "Adding Antigravity repository GPG key..."
 
-  if dpkg -l fuse 2>/dev/null | grep -q "^ii"; then
-    log_info "FUSE already installed"
+  # Create keyrings directory if it doesn't exist
+  mkdir -p /etc/apt/keyrings
+
+  # Check if key already exists
+  if [[ -f "$ANTIGRAVITY_GPG_KEY" ]]; then
+    log_info "Antigravity GPG key already exists"
     return 0
   fi
 
-  if ! DEBIAN_FRONTEND=noninteractive apt-get install -y fuse libfuse2 2>&1 |
-    tee -a "${LOG_FILE:-/dev/null}"; then
-    log_error "Failed to install FUSE"
-    return 1
-  fi
-
-  log_info "FUSE installed successfully"
-  return 0
-}
-
-#######################################
-# Fetch latest Antigravity AppImage URL (direct download)
-# Globals:
-#   ANTIGRAVITY_DOWNLOAD_URL
-# Arguments:
-#   None
-# Outputs:
-#   AppImage download URL to stdout
-# Returns:
-#   0 on success, 1 on failure
-#######################################
-ide_antigravity_fetch_url() {
-  log_info "Using Antigravity direct download URL (auto-updates to latest): $ANTIGRAVITY_DOWNLOAD_URL"
-  echo "$ANTIGRAVITY_DOWNLOAD_URL"
-  return 0
-}
-
-#######################################
-# Download and install Antigravity AppImage
-# Globals:
-#   ANTIGRAVITY_INSTALL_DIR, ANTIGRAVITY_APPIMAGE
-# Arguments:
-#   $1 - AppImage download URL
-# Returns:
-#   0 on success, 1 on failure
-#######################################
-ide_antigravity_install_appimage() {
-  local appimage_url="$1"
-  log_info "Installing Antigravity AppImage from: $appimage_url"
-
-  # Create installation directory
-  mkdir -p "$ANTIGRAVITY_INSTALL_DIR"
-  transaction_log "antigravity_dir_create" "rm -rf '$ANTIGRAVITY_INSTALL_DIR'"
-
-  # Download AppImage with retry
+  # Download and install GPG key with retry
   local max_retries=3
   local retry_count=0
 
   while ((retry_count < max_retries)); do
-    if wget -O "$ANTIGRAVITY_APPIMAGE" "$appimage_url" 2>&1 |
-      tee -a "${LOG_FILE:-/dev/null}"; then
-      log_info "Antigravity AppImage downloaded successfully"
-      break
+    if curl -fsSL "$ANTIGRAVITY_GPG_URL" | gpg --dearmor --yes -o "$ANTIGRAVITY_GPG_KEY"; then
+      transaction_log "gpg_key_add" "rm -f '$ANTIGRAVITY_GPG_KEY'"
+      log_info "Antigravity GPG key added successfully"
+      return 0
     fi
 
     retry_count=$((retry_count + 1))
     if ((retry_count < max_retries)); then
-      log_warning "Failed to download Antigravity AppImage (attempt $retry_count/$max_retries), retrying..."
+      log_warning "Failed to download GPG key (attempt $retry_count/$max_retries), retrying..."
       sleep 2
-    else
-      log_error "Failed to download Antigravity AppImage after $max_retries attempts"
-      return 1
     fi
   done
 
-  # Make AppImage executable
-  chmod +x "$ANTIGRAVITY_APPIMAGE"
+  log_error "Failed to add Antigravity GPG key after $max_retries attempts"
+  return 1
+}
 
-  log_info "Antigravity AppImage installed successfully"
+#######################################
+# Add Antigravity repository
+# Globals:
+#   ANTIGRAVITY_REPO, ANTIGRAVITY_LIST
+# Arguments:
+#   None
+# Returns:
+#   0 on success, 1 on failure
+#######################################
+ide_antigravity_add_repository() {
+  log_info "Adding Antigravity repository..."
+
+  # Check if repository already exists
+  if [[ -f "$ANTIGRAVITY_LIST" ]]; then
+    log_info "Antigravity repository already configured"
+    return 0
+  fi
+
+  # Add repository
+  if ! echo "$ANTIGRAVITY_REPO" | tee "$ANTIGRAVITY_LIST" >/dev/null; then
+    log_error "Failed to add Antigravity repository"
+    return 1
+  fi
+
+  transaction_log "repo_add" "rm -f '$ANTIGRAVITY_LIST'"
+  log_info "Antigravity repository added successfully"
   return 0
 }
 
 #######################################
-# Download Antigravity icon
+# Update APT cache after adding repository
 # Globals:
-#   ANTIGRAVITY_ICON_URL, ANTIGRAVITY_ICON_PATH
+#   None
 # Arguments:
 #   None
 # Returns:
-#   0 on success, 1 on failure (non-critical)
+#   0 on success, 1 on failure
 #######################################
-ide_antigravity_download_icon() {
-  log_info "Downloading Antigravity icon..."
+ide_antigravity_update_apt() {
+  log_info "Updating APT cache..."
 
-  # Try to download icon (non-critical)
-  if wget -q -O "$ANTIGRAVITY_ICON_PATH" "$ANTIGRAVITY_ICON_URL" 2>&1 |
+  if ! apt-get update 2>&1 | tee -a "${LOG_FILE:-/dev/null}"; then
+    log_error "Failed to update APT cache"
+    return 1
+  fi
+
+  log_info "APT cache updated successfully"
+  return 0
+}
+
+#######################################
+# Install Antigravity package
+# Globals:
+#   None
+# Arguments:
+#   None
+# Returns:
+#   0 on success, 1 on failure
+#######################################
+ide_antigravity_install_package() {
+  log_info "Installing Antigravity package..."
+
+  # Check if already installed
+  if dpkg -l antigravity 2>/dev/null | grep -q "^ii"; then
+    log_info "Antigravity package already installed"
+    return 0
+  fi
+
+  # Install with auto-fix for dependencies
+  if ! DEBIAN_FRONTEND=noninteractive apt-get install -y --fix-broken antigravity 2>&1 |
     tee -a "${LOG_FILE:-/dev/null}"; then
-    transaction_log "antigravity_icon" "rm -f '$ANTIGRAVITY_ICON_PATH'"
-    log_info "Antigravity icon downloaded successfully"
-    return 0
-  else
-    log_warning "Failed to download Antigravity icon (non-critical)"
+    log_error "Failed to install Antigravity package"
     return 1
   fi
-}
 
-#######################################
-# Create desktop launcher for Antigravity
-# Globals:
-#   ANTIGRAVITY_APPIMAGE, ANTIGRAVITY_DESKTOP, ANTIGRAVITY_ICON_PATH
-# Arguments:
-#   None
-# Returns:
-#   0 on success, 1 on failure
-#######################################
-ide_antigravity_create_launcher() {
-  log_info "Creating desktop launcher for Antigravity..."
-
-  # Determine icon path (use downloaded or fallback)
-  local icon_value="antigravity"
-  if [[ -f "$ANTIGRAVITY_ICON_PATH" ]]; then
-    icon_value="$ANTIGRAVITY_ICON_PATH"
-  fi
-
-  cat >"$ANTIGRAVITY_DESKTOP" <<EOF
-[Desktop Entry]
-Name=Antigravity
-Comment=Advanced code editor with AI assistance
-Exec=$ANTIGRAVITY_APPIMAGE
-Icon=$icon_value
-Type=Application
-Categories=Development;IDE;TextEditor;
-Terminal=false
-StartupNotify=true
-EOF
-
-  transaction_log "antigravity_launcher" "rm -f '$ANTIGRAVITY_DESKTOP'"
-  log_info "Desktop launcher created for Antigravity"
+  transaction_log "package_install" "apt-get remove -y antigravity"
+  log_info "Antigravity package installed successfully"
   return 0
-}
-
-#######################################
-# Create CLI alias/symlink for Antigravity
-# Globals:
-#   ANTIGRAVITY_APPIMAGE
-# Arguments:
-#   None
-# Returns:
-#   0 on success, 1 on failure
-#######################################
-ide_antigravity_create_cli_alias() {
-  log_info "Creating CLI alias for Antigravity..."
-
-  # Create symlink in /usr/local/bin
-  if ln -sf "$ANTIGRAVITY_APPIMAGE" /usr/local/bin/antigravity; then
-    transaction_log "antigravity_symlink" "rm -f /usr/local/bin/antigravity"
-    log_info "CLI alias 'antigravity' created successfully"
-    return 0
-  else
-    log_error "Failed to create CLI alias for Antigravity"
-    return 1
-  fi
 }
 
 #######################################
 # Verify Antigravity installation
 # Globals:
-#   ANTIGRAVITY_APPIMAGE, ANTIGRAVITY_DESKTOP
+#   ANTIGRAVITY_DESKTOP
 # Arguments:
 #   None
 # Returns:
@@ -240,34 +191,28 @@ ide_antigravity_create_cli_alias() {
 ide_antigravity_verify() {
   log_info "Verifying Antigravity installation..."
 
-  # Check AppImage exists and is executable
-  if [[ ! -f "$ANTIGRAVITY_APPIMAGE" ]]; then
-    log_error "Antigravity AppImage not found at: $ANTIGRAVITY_APPIMAGE"
+  # Check package status first (most reliable)
+  if ! dpkg -l antigravity 2>/dev/null | grep -q "^ii"; then
+    log_error "Antigravity package not properly installed (dpkg status check failed)"
     return 1
   fi
 
-  if [[ ! -x "$ANTIGRAVITY_APPIMAGE" ]]; then
-    log_error "Antigravity AppImage is not executable: $ANTIGRAVITY_APPIMAGE"
-    return 1
-  fi
-
-  # Check CLI command exists
+  # Check executable exists
   if ! command -v antigravity &>/dev/null; then
-    log_error "Antigravity command 'antigravity' not found in PATH"
+    log_error "Antigravity command not found in PATH"
     return 1
   fi
 
   # Check desktop launcher exists
   if [[ ! -f "$ANTIGRAVITY_DESKTOP" ]]; then
     log_warning "Antigravity desktop launcher not found at $ANTIGRAVITY_DESKTOP"
+    # Non-fatal - desktop file might be created later
   fi
 
-  # Verify symlink points to correct location
-  local antigravity_path
-  antigravity_path=$(command -v antigravity)
-
-  if [[ "$antigravity_path" != "/usr/local/bin/antigravity" ]]; then
-    log_warning "Antigravity CLI alias not at expected location: $antigravity_path"
+  # Verify binary is executable
+  if [[ ! -x "$(command -v antigravity)" ]]; then
+    log_error "Antigravity binary is not executable"
+    return 1
   fi
 
   log_info "Antigravity verification passed"
@@ -298,38 +243,27 @@ ide_antigravity_execute() {
     return 1
   fi
 
-  # Install FUSE for AppImage support
-  if ! ide_antigravity_install_fuse; then
-    log_error "Failed to install FUSE (required for AppImage)"
+  # Add GPG key
+  if ! ide_antigravity_add_gpg_key; then
+    log_error "Failed to add Antigravity GPG key"
     return 1
   fi
 
-  # Fetch latest AppImage URL
-  local appimage_url
-  if ! appimage_url=$(ide_antigravity_fetch_url); then
-    log_error "Failed to fetch Antigravity AppImage URL"
+  # Add repository
+  if ! ide_antigravity_add_repository; then
+    log_error "Failed to add Antigravity repository"
     return 1
   fi
 
-  log_info "Antigravity AppImage URL: $appimage_url"
-
-  # Install AppImage
-  if ! ide_antigravity_install_appimage "$appimage_url"; then
-    log_error "Failed to install Antigravity AppImage"
+  # Update APT cache
+  if ! ide_antigravity_update_apt; then
+    log_error "Failed to update APT cache"
     return 1
   fi
 
-  # Download icon (non-critical)
-  ide_antigravity_download_icon || true
-
-  # Create desktop launcher
-  if ! ide_antigravity_create_launcher; then
-    log_warning "Failed to create desktop launcher (non-critical)"
-  fi
-
-  # Create CLI alias
-  if ! ide_antigravity_create_cli_alias; then
-    log_error "Failed to create CLI alias"
+  # Install package
+  if ! ide_antigravity_install_package; then
+    log_error "Failed to install Antigravity package"
     return 1
   fi
 
@@ -349,12 +283,10 @@ ide_antigravity_execute() {
 # Export functions for testing
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
   export -f ide_antigravity_check_prerequisites
-  export -f ide_antigravity_install_fuse
-  export -f ide_antigravity_fetch_url
-  export -f ide_antigravity_install_appimage
-  export -f ide_antigravity_download_icon
-  export -f ide_antigravity_create_launcher
-  export -f ide_antigravity_create_cli_alias
+  export -f ide_antigravity_add_gpg_key
+  export -f ide_antigravity_add_repository
+  export -f ide_antigravity_update_apt
+  export -f ide_antigravity_install_package
   export -f ide_antigravity_verify
   export -f ide_antigravity_execute
 fi
