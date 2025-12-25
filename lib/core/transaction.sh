@@ -13,6 +13,7 @@ readonly _TRANSACTION_SH_LOADED=1
 # Source logger for output
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/core/logger.sh
+# shellcheck disable=SC1091  # Intentional sourcing - path resolved at runtime
 source "${SCRIPT_DIR}/logger.sh"
 
 # Transaction log file (use logger's value if set)
@@ -260,4 +261,109 @@ transaction_validate() {
   
   log_debug "Transaction log validation passed"
   return 0
+}
+
+# Restore transaction log from backup
+transaction_restore() {
+  local backup_file="${1}"
+  
+  if [[ ! -f "${backup_file}" ]]; then
+    log_error "Backup file not found: ${backup_file}"
+    return 1
+  fi
+  
+  cp "${backup_file}" "${TRANSACTION_LOG}" || {
+    log_error "Failed to restore transaction log from backup"
+    return 1
+  }
+  
+  log_info "Transaction log restored from: ${backup_file}"
+  return 0
+}
+
+# Get last (most recent) transaction
+transaction_get_last() {
+  if [[ ! -f "$TRANSACTION_LOG" ]]; then
+    return 0
+  fi
+  
+  tail -n 1 "$TRANSACTION_LOG"
+}
+
+# Get first (oldest) transaction
+transaction_get_first() {
+  if [[ ! -f "$TRANSACTION_LOG" ]]; then
+    return 0
+  fi
+  
+  head -n 1 "$TRANSACTION_LOG"
+}
+
+# Filter transactions by pattern
+transaction_filter_by_pattern() {
+  local pattern="${1}"
+  
+  if [[ ! -f "$TRANSACTION_LOG" ]]; then
+    return 0
+  fi
+  
+  grep "${pattern}" "$TRANSACTION_LOG" || true
+}
+
+# Export transactions as JSON array
+transaction_export_json() {
+  if [[ ! -f "$TRANSACTION_LOG" ]]; then
+    echo "[]"
+    return 0
+  fi
+  
+  echo "["
+  local first=true
+  while IFS='|' read -r timestamp action rollback_cmd; do
+    if [[ "$first" == "true" ]]; then
+      first=false
+    else
+      echo ","
+    fi
+    
+    # Escape quotes in values using jq for robust JSON encoding
+    local ts_json action_json rollback_json
+    ts_json=$(printf '%s' "$timestamp" | jq -Rs .)
+    action_json=$(printf '%s' "$action" | jq -Rs .)
+    rollback_json=$(printf '%s' "$rollback_cmd" | jq -Rs .)
+    
+    cat <<EOF
+  {
+    "timestamp": $ts_json,
+    "action": $action_json,
+    "rollback_command": $rollback_json
+  }
+EOF
+  done < "$TRANSACTION_LOG"
+  echo ""
+  echo "]"
+}
+
+# Get transaction by index (1-indexed)
+transaction_get_by_index() {
+  local index="${1}"
+  
+  if [[ ! -f "$TRANSACTION_LOG" ]]; then
+    return 1
+  fi
+  
+  sed -n "${index}p" "$TRANSACTION_LOG"
+}
+
+# Get transaction summary statistics
+transaction_summarize() {
+  local count
+  count=$(transaction_count)
+  
+  cat <<EOF
+Transaction Log Summary:
+  Total Transactions: ${count}
+  Log File: ${TRANSACTION_LOG}
+  Latest Transaction: $(transaction_get_last | cut -d'|' -f2 || echo "None")
+EOF
 }

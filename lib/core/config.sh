@@ -13,6 +13,7 @@ readonly _CONFIG_SH_LOADED=1
 # Source logger for output
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/core/logger.sh
+# shellcheck disable=SC1091  # Intentional sourcing - path resolved at runtime
 source "${SCRIPT_DIR}/logger.sh"
 
 # Configuration file paths (only set if not already set)
@@ -84,6 +85,9 @@ config_load_file() {
   
   log_debug "Loading config from: $config_file"
   
+  # Temporarily disable unbound variable check for CONFIG array assignments
+  set +u
+  
   # Read config file line by line
   while IFS='=' read -r key value; do
     # Skip comments and empty lines
@@ -98,10 +102,15 @@ config_load_file() {
     value="${value%\"}"
     value="${value#\"}"
     
-    # Store in CONFIG associative array
-    CONFIG["$key"]="$value"
+    # Store in CONFIG associative array (only if key is not empty)
+    if [[ -n "$key" ]]; then
+      CONFIG["$key"]="$value"
+    fi
     
   done < "$config_file"
+  
+  # Re-enable unbound variable check
+  set -u
   
   log_debug "Loaded configuration from: $config_file"
   return 0
@@ -127,7 +136,15 @@ config_set() {
   local key="$1"
   local value="$2"
   
+  if [[ -z "$key" ]]; then
+    log_error "Config key cannot be empty"
+    return 1
+  fi
+  
+  set +u
   CONFIG["$key"]="$value"
+  set -u
+  
   log_debug "Config set: $key=$value"
 }
 
@@ -314,4 +331,152 @@ config_export_env() {
   done
   
   log_debug "Configuration exported to environment"
+}
+
+# Alias for config_has
+config_has_key() {
+  config_has "$1"
+}
+
+# Validate required configuration keys exist
+# Args: $@ - list of required keys
+config_validate_required() {
+  local errors=0
+  local key
+  
+  for key in "$@"; do
+    if ! config_has_key "$key"; then
+      log_error "Required configuration key missing: $key"
+      errors=$((errors + 1))
+    fi
+  done
+  
+  if [[ $errors -gt 0 ]]; then
+    return 1
+  fi
+  
+  return 0
+}
+
+# Validate boolean configuration value
+# Args: $1 - key
+config_validate_boolean() {
+  local key="$1"
+  local value
+  
+  value=$(config_get "$key")
+  
+  if [[ ! "$value" =~ ^(true|false|yes|no|1|0|on|off)$ ]]; then
+    log_error "Invalid boolean value for $key: $value"
+    return 1
+  fi
+  
+  return 0
+}
+
+# Validate integer configuration value
+# Args: $1 - key
+config_validate_integer() {
+  local key="$1"
+  local value
+  
+  value=$(config_get "$key")
+  
+  if [[ ! "$value" =~ ^[0-9]+$ ]]; then
+    log_error "Invalid integer value for $key: $value"
+    return 1
+  fi
+  
+  return 0
+}
+
+# Validate value is within range
+# Args: $1 - key, $2 - min, $3 - max
+config_validate_range() {
+  local key="$1"
+  local min="$2"
+  local max="$3"
+  local value
+  
+  value=$(config_get "$key")
+  
+  if [[ ! "$value" =~ ^[0-9]+$ ]]; then
+    log_error "Value for $key is not a number: $value"
+    return 1
+  fi
+  
+  if [[ $value -lt $min ]] || [[ $value -gt $max ]]; then
+    log_error "Value for $key out of range [$min-$max]: $value"
+    return 1
+  fi
+  
+  return 0
+}
+
+# Export configuration as key=value format
+config_export() {
+  local key
+  for key in "${!CONFIG[@]}"; do
+    echo "$key=\"${CONFIG[$key]}\""
+  done
+}
+
+# Export configuration as JSON
+config_export_json() {
+  local first=true
+  
+  echo "{"
+  for key in "${!CONFIG[@]}"; do
+    if [[ "$first" == "true" ]]; then
+      first=false
+    else
+      echo ","
+    fi
+    
+    # Escape quotes in value
+    local value="${CONFIG[$key]}"
+    value="${value//\"/\\\"}"
+    
+    echo -n "  \"$key\": \"$value\""
+  done
+  echo ""
+  echo "}"
+}
+
+# Save configuration to file
+# Args: $1 - output file path
+config_save() {
+  local output_file="$1"
+  
+  config_export > "$output_file" || {
+    log_error "Failed to save configuration to: $output_file"
+    return 1
+  }
+  
+  log_info "Configuration saved to: $output_file"
+  return 0
+}
+
+# Reload configuration from files
+config_reload() {
+  # Clear existing configuration
+  unset CONFIG
+  declare -gA CONFIG
+  
+  # Reload from files
+  config_init
+}
+
+# List all configuration keys
+config_list_keys() {
+  for key in "${!CONFIG[@]}"; do
+    echo "$key"
+  done
+}
+
+# Clear all configuration
+config_clear() {
+  unset CONFIG
+  declare -gA CONFIG
+  log_debug "Configuration cleared"
 }

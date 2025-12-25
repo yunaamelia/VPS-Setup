@@ -395,34 +395,34 @@
 
 ### Unit Tests (Target: 80-90% coverage)
 
-- [ ] T144 Create unit tests for logger.sh functions
-- [ ] T145 Create unit tests for checkpoint.sh functions
-- [ ] T146 Create unit tests for config.sh functions
-- [ ] T147 Create unit tests for transaction.sh functions
-- [ ] T148 Create unit tests for rollback.sh functions per test_rollback.bats requirements
-- [ ] T149 Create unit tests for state.sh functions
-- [ ] T150 Create unit tests for all Python utilities (.py files)
+- [x] T144 Create unit tests for logger.sh functions
+- [x] T145 Create unit tests for checkpoint.sh functions
+- [x] T146 Create unit tests for config.sh functions
+- [x] T147 Create unit tests for transaction.sh functions
+- [x] T148 Create unit tests for rollback.sh functions per test_rollback.bats requirements
+- [x] T149 Create unit tests for state.sh functions
+- [x] T150 Create unit tests for all Python utilities (.py files)
 
 ### Integration Tests (Target: 70% coverage)
 
-- [ ] T151 Create integration test for system-prep module (already done in T025)
-- [ ] T152 Create integration test for complete provisioning workflow
-- [ ] T153 Create integration test for multi-VPS concurrent provisioning
-- [ ] T154 Create integration test for network failure scenarios
-- [ ] T155 Create integration test for resource exhaustion scenarios
+- [x] T151 Create integration test for system-prep module (already done in T025)
+- [x] T152 Create integration test for complete provisioning workflow
+- [x] T153 Create integration test for multi-VPS concurrent provisioning
+- [x] T154 Create integration test for network failure scenarios
+- [x] T155 Create integration test for resource exhaustion scenarios
 
 ### Contract Tests
 
-- [ ] T156 Validate CLI interface contract (already done in T022)
-- [ ] T157 Create contract tests for module interfaces in `tests/contract/test_module_interfaces.bats`
-- [ ] T158 Create contract tests for validation interface in `tests/contract/test_validation_interface.bats`
+- [x] T156 Validate CLI interface contract (already done in T022)
+- [x] T157 Create contract tests for module interfaces in `tests/contract/test_module_interfaces.bats`
+- [x] T158 Create contract tests for validation interface in `tests/contract/test_validation_interface.bats`
 
 ### E2E Tests (100% P1 coverage)
 
-- [ ] T159 Full provisioning E2E test (already done in T053)
-- [ ] T160 Create E2E test for idempotent re-run
-- [ ] T161 Create E2E test for failure and rollback
-- [ ] T162 Create E2E test for multi-session scenario
+- [x] T159 Full provisioning E2E test (already done in T053)
+- [x] T160 Create E2E test for idempotent re-run
+- [x] T161 Create E2E test for failure and rollback
+- [x] T162 Create E2E test for multi-session scenario
 
 ### Load & Stress Tests
 

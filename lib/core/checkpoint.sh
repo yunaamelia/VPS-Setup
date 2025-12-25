@@ -306,3 +306,109 @@ checkpoint_handle_force_mode() {
   log_info "All checkpoints cleared - full re-provisioning will occur"
   return 0
 }
+
+# Get checkpoint metadata
+# Args: $1 - checkpoint name
+# Returns: full checkpoint file contents
+checkpoint_get_metadata() {
+  local checkpoint_name="$1"
+  local checkpoint_file="${CHECKPOINT_DIR}/${checkpoint_name}.checkpoint"
+  
+  if [[ ! -f "$checkpoint_file" ]]; then
+    return 1
+  fi
+  
+  cat "$checkpoint_file"
+}
+
+# Get checkpoint creation timestamp
+# Args: $1 - checkpoint name
+# Returns: ISO 8601 timestamp
+checkpoint_get_created_at() {
+  local checkpoint_name="$1"
+  checkpoint_get_timestamp "$checkpoint_name"
+}
+
+# Calculate checkpoint age in seconds
+# Args: $1 - checkpoint name
+# Returns: age in seconds
+checkpoint_age_seconds() {
+  local checkpoint_name="$1"
+  local timestamp
+  
+  timestamp=$(checkpoint_get_timestamp "$checkpoint_name")
+  if [[ -z "$timestamp" ]]; then
+    return 1
+  fi
+  
+  local created_epoch
+  local current_epoch
+  
+  created_epoch=$(date -d "$timestamp" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$timestamp" +%s 2>/dev/null)
+  current_epoch=$(date +%s)
+  
+  echo $((current_epoch - created_epoch))
+}
+
+# Export checkpoint as JSON
+# Args: $1 - checkpoint name
+# Returns: JSON representation
+checkpoint_export() {
+  local checkpoint_name="$1"
+  local checkpoint_file="${CHECKPOINT_DIR}/${checkpoint_name}.checkpoint"
+  
+  if [[ ! -f "$checkpoint_file" ]]; then
+    return 1
+  fi
+  
+  local created_at
+  local hostname
+  local user
+  
+  created_at=$(grep "^CREATED_AT=" "$checkpoint_file" | cut -d'"' -f2)
+  hostname=$(grep "^HOSTNAME=" "$checkpoint_file" | cut -d'"' -f2)
+  user=$(grep "^USER=" "$checkpoint_file" | cut -d'"' -f2)
+  
+  cat <<EOF
+{
+  "checkpoint_name": "$checkpoint_name",
+  "created_at": "$created_at",
+  "hostname": "$hostname",
+  "user": "$user"
+}
+EOF
+}
+
+# Import checkpoint from JSON (via stdin)
+# Reads JSON from stdin and recreates checkpoint
+checkpoint_import() {
+  local json_input
+  json_input=$(cat)
+  
+  local checkpoint_name
+  local created_at
+  local hostname
+  local user
+  
+  checkpoint_name=$(echo "$json_input" | grep -o '"checkpoint_name": *"[^"]*"' | cut -d'"' -f4)
+  created_at=$(echo "$json_input" | grep -o '"created_at": *"[^"]*"' | cut -d'"' -f4)
+  hostname=$(echo "$json_input" | grep -o '"hostname": *"[^"]*"' | cut -d'"' -f4)
+  user=$(echo "$json_input" | grep -o '"user": *"[^"]*"' | cut -d'"' -f4)
+  
+  if [[ -z "$checkpoint_name" ]]; then
+    return 1
+  fi
+  
+  local checkpoint_file="${CHECKPOINT_DIR}/${checkpoint_name}.checkpoint"
+  
+  cat > "$checkpoint_file" <<EOF
+CHECKPOINT_NAME="$checkpoint_name"
+CREATED_AT="$created_at"
+HOSTNAME="$hostname"
+USER="$user"
+EOF
+  
+  chmod 640 "$checkpoint_file" 2>/dev/null || true
+  
+  return 0
+}
