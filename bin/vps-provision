@@ -876,7 +876,6 @@ should_skip_phase() {
   
   return 1  # Should NOT skip
 }
-}
 
 # Trap signals for graceful shutdown
 trap 'log_warning "Received SIGINT, initiating graceful shutdown..."; exit 130' SIGINT
