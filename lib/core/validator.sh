@@ -416,3 +416,52 @@ validator_preflight_resources() {
   log_info "Resource pre-flight check passed"
   return 0
 }
+
+# Run all validation checks
+# Returns: 0 if all checks pass, 1 if any check fails
+validator_check_all() {
+  log_info "Running comprehensive pre-flight validation..."
+  
+  validator_init
+  
+  local errors=0
+  
+  # Check OS
+  if ! validator_check_os; then
+    errors=$((errors + 1))
+  fi
+  
+  # Check RAM (minimum 2GB)
+  if ! validator_check_ram 2; then
+    errors=$((errors + 1))
+  fi
+  
+  # Check CPU (minimum 1 core)
+  if ! validator_check_cpu 1; then
+    errors=$((errors + 1))
+  fi
+  
+  # Check disk (minimum 25GB)
+  if ! validator_check_disk 25; then
+    errors=$((errors + 1))
+  fi
+  
+  # Check network connectivity
+  if ! validator_check_network; then
+    errors=$((errors + 1))
+  fi
+  
+  # Check root privileges
+  if ! validator_check_root; then
+    errors=$((errors + 1))
+  fi
+  
+  # Report results
+  if [[ $errors -gt 0 ]]; then
+    log_error "Validation failed with $errors error(s)"
+    return 1
+  fi
+  
+  log_info "All validation checks passed"
+  return 0
+}
