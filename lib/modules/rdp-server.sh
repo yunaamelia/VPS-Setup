@@ -479,11 +479,22 @@ rdp_server_validate_installation() {
   key_perms=$(stat -c "%a" "${KEY_FILE}")
   if [[ "${key_perms}" != "600" ]]; then
     log_warning "Incorrect key file permissions: ${key_perms}, fixing to 600"
-    chmod 600 "${KEY_FILE}"
+    
+    # Check file attributes first
+    if command -v lsattr &>/dev/null; then
+      lsattr "${KEY_FILE}" 2>&1 | tee -a "${LOG_FILE}"
+    fi
+    
+    # Try multiple approaches to fix permissions
+    chmod 600 "${KEY_FILE}" 2>&1 | tee -a "${LOG_FILE}"
+    chattr -i "${KEY_FILE}" 2>/dev/null || true  # Remove immutable flag if set
+    chmod 600 "${KEY_FILE}" 2>&1 | tee -a "${LOG_FILE}"
+    
     # Verify fix worked
     key_perms=$(stat -c "%a" "${KEY_FILE}")
     if [[ "${key_perms}" != "600" ]]; then
       log_error "Failed to fix key file permissions: still ${key_perms} (expected 600)"
+      log_error "File info: $(ls -la "${KEY_FILE}")"
       return 1
     fi
     log_info "Key file permissions corrected to 600"
