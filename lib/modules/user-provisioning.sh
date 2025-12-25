@@ -287,8 +287,10 @@ EOF
 
   transaction_record "Created audit rules" "rm -f ${audit_rules_file}"
 
-  # Load audit rules
-  if ! auditctl -R "${audit_rules_file}" 2>&1 | tee -a "${LOG_FILE}"; then
+  # Load audit rules (ignore "Rule exists" errors)
+  if ! auditctl -R "${audit_rules_file}" 2>&1 | grep -v "Rule exists" | tee -a "${LOG_FILE}" | grep -q "Error"; then
+    log_info "Audit rules loaded successfully"
+  else
     log_warning "Failed to load audit rules immediately (will load on next boot)"
   fi
 
@@ -375,11 +377,18 @@ user_provisioning_generate_password() {
 
   # SEC-004: Force password change on first login per requirement
   # Note: 'chage' is the correct command name (change age)
-  if ! chage -d 0 "${username}" 2>&1 | grep -v "password" | tee -a "${LOG_FILE}" >/dev/null; then
-    log_error "Failed to set password expiration for ${username}"
+  local chage_output
+  chage_output=$(mktemp)
+  
+  if ! chage -d 0 "${username}" 2>"${chage_output}"; then
+    local chage_error
+    chage_error=$(cat "${chage_output}" | head -1)
+    log_error "Failed to set password expiration for ${username}: ${chage_error:-unknown error}"
+    rm -f "${chage_output}"
     return 1
   fi
-
+  
+  rm -f "${chage_output}"
   log_info "Password expiry configured: user must change on first login (SEC-004)"
 
   # Return password for display in final summary ONLY (security note: intentional per FR-027)
