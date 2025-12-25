@@ -18,7 +18,8 @@ source "${LIB_DIR}/core/transaction.sh"
 
 # Constants
 readonly ANTIGRAVITY_CHECKPOINT="${ANTIGRAVITY_CHECKPOINT:-ide-antigravity}"
-readonly ANTIGRAVITY_GITHUB_API="https://api.github.com/repos/antigravity-code/antigravity/releases/latest"
+# Direct download URL that auto-updates to latest version
+readonly ANTIGRAVITY_DOWNLOAD_URL="https://antigravity.google/download/linux"
 readonly ANTIGRAVITY_INSTALL_DIR="${ANTIGRAVITY_INSTALL_DIR:-/opt/antigravity}"
 readonly ANTIGRAVITY_DESKTOP="${ANTIGRAVITY_DESKTOP:-/usr/share/applications/antigravity.desktop}"
 readonly ANTIGRAVITY_APPIMAGE="${ANTIGRAVITY_APPIMAGE:-$ANTIGRAVITY_INSTALL_DIR/antigravity.AppImage}"
@@ -84,9 +85,9 @@ ide_antigravity_install_fuse() {
 }
 
 #######################################
-# Fetch latest Antigravity AppImage URL from GitHub
+# Fetch latest Antigravity AppImage URL (direct download)
 # Globals:
-#   ANTIGRAVITY_GITHUB_API
+#   ANTIGRAVITY_DOWNLOAD_URL
 # Arguments:
 #   None
 # Outputs:
@@ -95,42 +96,8 @@ ide_antigravity_install_fuse() {
 #   0 on success, 1 on failure
 #######################################
 ide_antigravity_fetch_url() {
-  log_info "Fetching latest Antigravity AppImage URL from GitHub..."
-
-  # Fetch release info with retry
-  local max_retries=3
-  local retry_count=0
-  local release_json
-
-  while ((retry_count < max_retries)); do
-    release_json=$(curl -s "$ANTIGRAVITY_GITHUB_API" 2>&1)
-
-    if [[ -n "$release_json" ]] && echo "$release_json" | jq -e . &>/dev/null; then
-      break
-    fi
-
-    retry_count=$((retry_count + 1))
-    if ((retry_count < max_retries)); then
-      log_warning "Failed to fetch GitHub API (attempt $retry_count/$max_retries), retrying..."
-      sleep 2
-    else
-      log_error "Failed to fetch Antigravity release info from GitHub after $max_retries attempts"
-      return 1
-    fi
-  done
-
-  # Extract AppImage URL
-  local appimage_url
-  appimage_url=$(echo "$release_json" |
-    jq -r '.assets[] | select(.name | endswith(".AppImage")) | .browser_download_url' |
-    head -n1)
-
-  if [[ -z "$appimage_url" || "$appimage_url" == "null" ]]; then
-    log_error "Failed to extract Antigravity AppImage URL from GitHub API response"
-    return 1
-  fi
-
-  echo "$appimage_url"
+  log_info "Using Antigravity direct download URL (auto-updates to latest): $ANTIGRAVITY_DOWNLOAD_URL"
+  echo "$ANTIGRAVITY_DOWNLOAD_URL"
   return 0
 }
 

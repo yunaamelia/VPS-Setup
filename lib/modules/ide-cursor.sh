@@ -18,8 +18,8 @@ source "${LIB_DIR}/core/transaction.sh"
 
 # Constants
 readonly CURSOR_CHECKPOINT="${CURSOR_CHECKPOINT:-ide-cursor}"
-readonly CURSOR_GITHUB_API="https://api.github.com/repos/getcursor/cursor/releases/latest"
-readonly CURSOR_APPIMAGE_API="${CURSOR_GITHUB_API}"
+# Direct download URL that auto-updates to latest version
+readonly CURSOR_DEB_URL="https://downloader.cursor.sh/linux/appImage/x64"
 readonly CURSOR_INSTALL_DIR="${CURSOR_INSTALL_DIR:-/opt/cursor}"
 readonly CURSOR_DESKTOP="${CURSOR_DESKTOP:-/usr/share/applications/cursor.desktop}"
 readonly CURSOR_TMP_DEB="${CURSOR_TMP_DEB:-/tmp/cursor.deb}"
@@ -101,27 +101,14 @@ ide_cursor_verify_signature() {
 #######################################
 ide_cursor_install_deb() {
   log_info "Attempting to install Cursor via .deb package..."
-
-  # Fetch latest .deb URL from GitHub API
-  log_info "Fetching latest Cursor .deb URL from GitHub..."
-  local deb_url
-  deb_url=$(curl -sL "$CURSOR_GITHUB_API" | \
-    grep -o 'https://[^"]*\.deb' | head -n1)
-
-  if [[ -z "$deb_url" ]]; then
-    log_warning "Failed to fetch Cursor .deb URL from GitHub API"
-    log_info "Falling back to AppImage installation..."
-    return 1
-  fi
-
-  log_info "Cursor .deb URL: $deb_url"
+  log_info "Using Cursor direct download URL (auto-updates to latest): $CURSOR_DEB_URL"
 
   # Download .deb package with retry
   local max_retries=3
   local retry_count=0
 
   while ((retry_count < max_retries)); do
-    if wget -O "$CURSOR_TMP_DEB" "$deb_url" 2>&1 |
+    if wget -O "$CURSOR_TMP_DEB" "$CURSOR_DEB_URL" 2>&1 |
       tee -a "${LOG_FILE:-/dev/null}"; then
       log_info "Cursor .deb package downloaded successfully"
       break
