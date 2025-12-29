@@ -186,11 +186,18 @@ rdp_server_generate_certificates() {
   chown xrdp:xrdp "${KEY_FILE}" "${CERT_FILE}"
   
   # Verify permissions were set correctly
-  local key_perms
+  local key_perms cert_perms
   key_perms=$(stat -c "%a" "${KEY_FILE}")
+  cert_perms=$(stat -c "%a" "${CERT_FILE}")
+  
   if [[ "${key_perms}" != "600" ]]; then
     log_warning "Key permissions were ${key_perms}, fixing to 600"
     chmod 600 "${KEY_FILE}"
+  fi
+  
+  if [[ "${cert_perms}" != "644" ]]; then
+    log_warning "Certificate permissions were ${cert_perms}, fixing to 644"
+    chmod 644 "${CERT_FILE}"
   fi
 
   transaction_log "rm -f ${CERT_FILE} ${KEY_FILE}"

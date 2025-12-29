@@ -313,8 +313,14 @@ dev_tools_validate() {
 
   # Verify all tools are executable
   for tool in "${CORE_TOOLS[@]}"; do
-    if ! command -v "${tool}" &>/dev/null; then
-      log_error "Tool not executable: ${tool}"
+    # Use mapped executable name if available, otherwise use tool name
+    local check_cmd="${tool}"
+    if [[ -n "${TOOL_EXECUTABLES[$tool]:-}" ]]; then
+      check_cmd="${TOOL_EXECUTABLES[$tool]}"
+    fi
+    
+    if ! command -v "${check_cmd}" &>/dev/null; then
+      log_error "Tool not executable: ${tool} (checking ${check_cmd})"
       validation_passed=false
     fi
   done

@@ -93,7 +93,7 @@ terminal_setup_install_bash_completion() {
   fi
 
   # Install package
-  if ! apt-get update -qq && apt-get install -y bash-completion 2>&1 | tee -a "${LOG_FILE}"; then
+  if ! apt-get update -qq || ! apt-get install -y bash-completion 2>&1 | tee -a "${LOG_FILE}"; then
     log_error "Failed to install bash-completion"
     return 1
   fi
