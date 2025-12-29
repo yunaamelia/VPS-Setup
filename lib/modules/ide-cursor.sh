@@ -2,6 +2,12 @@
 # IDE Cursor Installation Module
 # Purpose: Install Cursor IDE via .deb package or AppImage fallback
 # Requirements: FR-019, FR-037, SC-009
+#
+# Note: CURSOR_DEB_URL uses the official Cursor API endpoint that automatically
+#       redirects to the latest stable version. The URL format includes the
+#       major.minor version (2.2) but will always serve the latest patch release
+#       (e.g., 2.2.44, 2.2.45, etc.) ensuring installations always get the most
+#       up-to-date version without manual URL updates.
 
 set -euo pipefail
 
@@ -18,8 +24,10 @@ source "${LIB_DIR}/core/transaction.sh"
 
 # Constants
 readonly CURSOR_CHECKPOINT="${CURSOR_CHECKPOINT:-ide-cursor}"
-# Official download URLs
-readonly CURSOR_DEB_URL="https://download.todesktop.com/230313mzl4w4u92/linux/deb/x64"
+# Official Cursor update API - automatically serves latest stable version
+# This URL will redirect to the most recent patch release (e.g., cursor_2.2.44_amd64.deb)
+# Example redirect: https://downloads.cursor.com/production/<hash>/linux/x64/deb/amd64/deb/cursor_2.2.XX_amd64.deb
+readonly CURSOR_DEB_URL="https://api2.cursor.sh/updates/download/golden/linux-x64-deb/cursor/2.2"
 readonly CURSOR_APPIMAGE_API="https://api.github.com/repos/getcursor/cursor/releases/latest"
 readonly CURSOR_INSTALL_DIR="${CURSOR_INSTALL_DIR:-/opt/cursor}"
 readonly CURSOR_DESKTOP="${CURSOR_DESKTOP:-/usr/share/applications/cursor.desktop}"

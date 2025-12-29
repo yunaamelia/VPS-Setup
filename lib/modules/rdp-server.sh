@@ -93,7 +93,7 @@ rdp_server_install_packages() {
   )
 
   for package in "${rdp_packages[@]}"; do
-    if dpkg -l | grep -q "^ii  ${package}"; then
+    if dpkg-query --status "${package}" &>/dev/null; then
       log_info "Package ${package} already installed"
       continue
     fi
@@ -107,12 +107,13 @@ rdp_server_install_packages() {
     transaction_log "apt-get remove -y ${package}"
   done
 
-  # Verify installations
+  # Verify installations using dpkg-query (more reliable than dpkg -l | grep)
   for package in "${rdp_packages[@]}"; do
-    if ! dpkg -l | grep -q "^ii  ${package}"; then
+    if ! dpkg-query --status "${package}" &>/dev/null; then
       log_error "Package verification failed: ${package}"
       return 1
     fi
+    log_info "Package ${package} already installed"
   done
 
   log_info "xrdp packages installed successfully"
@@ -466,8 +467,18 @@ rdp_server_validate_installation() {
     # return 1
   fi
 
-  # Check port 3389 is listening
-  if ! ss -tuln | grep -q ":${RDP_PORT}"; then
+  # Check port 3389 is listening (try ss first, fallback to netstat)
+  local port_check=""
+  if command -v ss &>/dev/null; then
+    port_check=$(ss -tuln 2>/dev/null | grep -c ":${RDP_PORT}" || echo "0")
+  elif command -v netstat &>/dev/null; then
+    port_check=$(netstat -tuln 2>/dev/null | grep -c ":${RDP_PORT}" || echo "0")
+  else
+    log_debug "Neither ss nor netstat available for port check"
+    port_check="0"
+  fi
+  
+  if [[ "${port_check}" -eq 0 ]]; then
     log_warning "RDP port ${RDP_PORT} is not listening (likely because service failed to start)"
   fi
 
@@ -575,7 +586,7 @@ rdp_server_execute() {
     return 1
   }
 
-  progress_complete "RDP server configured"
+  progress_complete_phase "rdp-server"
   log_info "RDP server installation completed successfully"
   log_info "RDP access available on port ${RDP_PORT}"
   return 0

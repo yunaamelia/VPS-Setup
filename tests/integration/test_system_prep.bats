@@ -288,3 +288,50 @@ export -f checkpoint_create
   grep -q "# Configure unattended upgrades" "$module_file"
   grep -q "# Main execution function" "$module_file"
 }
+
+@test "system_prep: cleanup_apt_backups removes invalid backup files" {
+  # Create test backup files in APT conf directory
+  touch "${APT_CONF_DIR}/50unattended-upgrades.backup"
+  touch "${APT_CONF_DIR}/99custom.backup"
+  touch "${APT_CONF_DIR}/10periodic"  # Valid file without .backup extension
+  
+  # Verify backup files exist
+  assert [ -f "${APT_CONF_DIR}/50unattended-upgrades.backup" ]
+  assert [ -f "${APT_CONF_DIR}/99custom.backup" ]
+  
+  # Run cleanup function
+  run system_prep_cleanup_apt_backups
+  assert_success
+  
+  # Verify backup files are removed
+  assert [ ! -f "${APT_CONF_DIR}/50unattended-upgrades.backup" ]
+  assert [ ! -f "${APT_CONF_DIR}/99custom.backup" ]
+  
+  # Verify valid file is preserved
+  assert [ -f "${APT_CONF_DIR}/10periodic" ]
+}
+
+@test "system_prep: backup files stored in /var/backups not in APT conf dir" {
+  # Setup: Create original unattended-upgrades config
+  echo "Original config" > "${UNATTENDED_UPGRADES_CONF}"
+  
+  # Set backup directory
+  export BACKUP_DIR="${BATS_TEST_TMPDIR}/backups"
+  mkdir -p "${BACKUP_DIR}"
+  
+  # Mock transaction_log to avoid dependency issues
+  transaction_log() { return 0; }
+  export -f transaction_log
+  
+  # Run unattended upgrades configuration
+  run system_prep_configure_unattended_upgrades
+  assert_success
+  
+  # Verify no backup files in APT conf directory
+  local backup_count
+  backup_count=$(find "${APT_CONF_DIR}" -name "*.backup" 2>/dev/null | wc -l)
+  assert_equal "$backup_count" "0"
+  
+  # Verify backup exists in correct location
+  assert [ -f "${BACKUP_DIR}/50unattended-upgrades.backup" ]
+}

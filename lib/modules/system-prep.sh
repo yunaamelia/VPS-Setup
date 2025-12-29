@@ -39,6 +39,8 @@ readonly SYSTEM_PREP_PHASE="${SYSTEM_PREP_PHASE:-system-prep}"
 readonly APT_CONF_DIR="${APT_CONF_DIR:-/etc/apt/apt.conf.d}"
 readonly APT_CUSTOM_CONF="${APT_CUSTOM_CONF:-${APT_CONF_DIR}/99vps-provision}"
 readonly UNATTENDED_UPGRADES_CONF="${UNATTENDED_UPGRADES_CONF:-${APT_CONF_DIR}/50unattended-upgrades}"
+# Store backups in /var/backups to avoid APT warnings about invalid file extensions
+readonly BACKUP_DIR="${BACKUP_DIR:-/var/backups/vps-provision}"
 readonly SSHD_CONFIG="${SSHD_CONFIG:-/etc/ssh/sshd_config}"
 readonly SSHD_CONFIG_BACKUP="${SSHD_CONFIG_BACKUP:-${SSHD_CONFIG}.bak}"
 
@@ -54,11 +56,34 @@ readonly -a CORE_PACKAGES=(
   "apt-transport-https"
   "unattended-upgrades"
   "apt-listchanges"
+  "openssh-server"
 )
+
+# Clean up invalid backup files from APT config directory
+system_prep_cleanup_apt_backups() {
+  log_info "Cleaning up invalid backup files from APT config directory..."
+  
+  # Remove any .backup files from /etc/apt/apt.conf.d/ to avoid APT warnings
+  local backup_files
+  backup_files=$(find "${APT_CONF_DIR}" -maxdepth 1 -type f -name "*.backup" 2>/dev/null || true)
+  
+  if [[ -n "${backup_files}" ]]; then
+    while IFS= read -r backup_file; do
+      log_info "Removing invalid backup file: ${backup_file}"
+      rm -f "${backup_file}"
+    done <<< "${backup_files}"
+    log_info "APT backup files cleaned up"
+  else
+    log_debug "No invalid backup files found in APT config directory"
+  fi
+}
 
 # Configure APT for provisioning
 system_prep_configure_apt() {
   log_info "Configuring APT for provisioning..."
+  
+  # First, clean up any invalid backup files
+  system_prep_cleanup_apt_backups
 
   # Create custom APT configuration
   # T132: Optimized with parallel downloads and HTTP pipelining per performance-specs.md
@@ -190,11 +215,15 @@ system_prep_verify_package() {
 system_prep_configure_unattended_upgrades() {
   log_info "Configuring unattended upgrades..."
 
-  # Backup original configuration if it exists
+  # Create backup directory if it doesn't exist
+  mkdir -p "${BACKUP_DIR}"
+  
+  # Backup original configuration to /var/backups (not in APT conf dir to avoid warnings)
   if [[ -f "${UNATTENDED_UPGRADES_CONF}" ]]; then
-    cp "${UNATTENDED_UPGRADES_CONF}" "${UNATTENDED_UPGRADES_CONF}.backup"
+    local backup_path="${BACKUP_DIR}/50unattended-upgrades.backup"
+    cp "${UNATTENDED_UPGRADES_CONF}" "${backup_path}"
     transaction_log "backup_file" "${UNATTENDED_UPGRADES_CONF}" \
-      "mv '${UNATTENDED_UPGRADES_CONF}.backup' '${UNATTENDED_UPGRADES_CONF}'"
+      "cp '${backup_path}' '${UNATTENDED_UPGRADES_CONF}'"
   fi
 
   # Create unattended upgrades configuration

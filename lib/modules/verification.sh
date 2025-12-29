@@ -204,9 +204,6 @@ verification_execute() {
     return 0
   fi
 
-  # Start checkpoint
-  checkpoint_start "${VERIFICATION_PHASE}"
-
   local verification_failed=false
 
   # Run all verification checks
@@ -240,8 +237,6 @@ verification_execute() {
     return 1
   fi
 
-  # Complete checkpoint
-  checkpoint_complete "${VERIFICATION_PHASE}"
 
   log_info "All verification checks passed!"
   return 0
