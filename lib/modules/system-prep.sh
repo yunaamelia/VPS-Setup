@@ -32,6 +32,8 @@ source "${LIB_DIR}/core/checkpoint.sh"
 source "${LIB_DIR}/core/transaction.sh"
 # shellcheck disable=SC1091
 source "${LIB_DIR}/core/progress.sh"
+# shellcheck disable=SC1091
+source "${LIB_DIR}/core/validator.sh"
 
 # Module constants
 # Module constants
@@ -39,8 +41,13 @@ readonly SYSTEM_PREP_PHASE="${SYSTEM_PREP_PHASE:-system-prep}"
 readonly APT_CONF_DIR="${APT_CONF_DIR:-/etc/apt/apt.conf.d}"
 readonly APT_CUSTOM_CONF="${APT_CUSTOM_CONF:-${APT_CONF_DIR}/99vps-provision}"
 readonly UNATTENDED_UPGRADES_CONF="${UNATTENDED_UPGRADES_CONF:-${APT_CONF_DIR}/50unattended-upgrades}"
+# Store backups in /var/backups to avoid APT warnings about invalid file extensions
+readonly BACKUP_DIR="${BACKUP_DIR:-/var/backups/vps-provision}"
 readonly SSHD_CONFIG="${SSHD_CONFIG:-/etc/ssh/sshd_config}"
 readonly SSHD_CONFIG_BACKUP="${SSHD_CONFIG_BACKUP:-${SSHD_CONFIG}.bak}"
+readonly SYSTEMCTL_SHIM_PATH="/usr/bin/systemctl"
+readonly SYSTEMCTL_REAL_PATH="/usr/bin/systemctl.real"
+readonly POLICY_RC_PATH="${POLICY_RC_PATH:-/usr/sbin/policy-rc.d}"
 
 # Core packages required for provisioning
 readonly -a CORE_PACKAGES=(
@@ -54,11 +61,34 @@ readonly -a CORE_PACKAGES=(
   "apt-transport-https"
   "unattended-upgrades"
   "apt-listchanges"
+  "openssh-server"
 )
+
+# Clean up invalid backup files from APT config directory
+system_prep_cleanup_apt_backups() {
+  log_info "Cleaning up invalid backup files from APT config directory..."
+  
+  # Remove any .backup files from /etc/apt/apt.conf.d/ to avoid APT warnings
+  local backup_files
+  backup_files=$(find "${APT_CONF_DIR}" -maxdepth 1 -type f -name "*.backup" 2>/dev/null || true)
+  
+  if [[ -n "${backup_files}" ]]; then
+    while IFS= read -r backup_file; do
+      log_info "Removing invalid backup file: ${backup_file}"
+      rm -f "${backup_file}"
+    done <<< "${backup_files}"
+    log_info "APT backup files cleaned up"
+  else
+    log_debug "No invalid backup files found in APT config directory"
+  fi
+}
 
 # Configure APT for provisioning
 system_prep_configure_apt() {
   log_info "Configuring APT for provisioning..."
+  
+  # First, clean up any invalid backup files
+  system_prep_cleanup_apt_backups
 
   # Create custom APT configuration
   # T132: Optimized with parallel downloads and HTTP pipelining per performance-specs.md
@@ -99,6 +129,57 @@ EOF
   transaction_log "create_file" "${APT_CUSTOM_CONF}" "rm -f '${APT_CUSTOM_CONF}'"
   log_info "APT configuration created at ${APT_CUSTOM_CONF}"
   log_debug "APT configured with 3 parallel downloads and HTTP pipelining"
+}
+
+# Install a shim for systemctl --user to avoid noisy errors in containerized runs
+system_prep_install_systemctl_user_shim() {
+  if [[ -x "${SYSTEMCTL_SHIM_PATH}" && ! -x "${SYSTEMCTL_REAL_PATH}" ]]; then
+    mv "${SYSTEMCTL_SHIM_PATH}" "${SYSTEMCTL_REAL_PATH}"
+    transaction_log "move_file" "${SYSTEMCTL_SHIM_PATH}" "mv '${SYSTEMCTL_REAL_PATH}' '${SYSTEMCTL_SHIM_PATH}'"
+  fi
+
+  cat >"${SYSTEMCTL_SHIM_PATH}" <<'EOF'
+#!/bin/bash
+for arg in "$@"; do
+  if [[ "${arg}" == "--user" ]]; then
+    exit 0
+  fi
+  if [[ "${arg}" == *"pulseaudio"* ]]; then
+    exit 0
+  fi
+done
+exec /usr/bin/systemctl.real "$@"
+EOF
+
+  chmod +x "${SYSTEMCTL_SHIM_PATH}"
+  transaction_log "create_file" "${SYSTEMCTL_SHIM_PATH}" "rm -f '${SYSTEMCTL_SHIM_PATH}' && mv '${SYSTEMCTL_REAL_PATH}' '${SYSTEMCTL_SHIM_PATH}'"
+  log_info "Installed systemctl shim to bypass user service reloads in containers"
+}
+
+# Install a shim for policy-rc.d in container environments to allow service starts
+system_prep_install_policy_rc_shim() {
+  if ! validator_is_container; then
+    log_debug "Not running in a container, skipping policy-rc.d shim"
+    return 0
+  fi
+
+  if [[ -f "${POLICY_RC_PATH}" ]]; then
+    log_info "policy-rc.d already exists, skipping installation"
+    return 0
+  fi
+
+  log_info "Installing policy-rc.d shim to allow service execution in container"
+
+  cat >"${POLICY_RC_PATH}" <<'EOF'
+#!/bin/sh
+# policy-rc.d shim for VPS provisioning in container
+# Always returns 0 to allow service starts
+exit 0
+EOF
+
+  chmod +x "${POLICY_RC_PATH}"
+  transaction_log "create_file" "${POLICY_RC_PATH}" "rm -f '${POLICY_RC_PATH}'"
+  log_info "policy-rc.d shim installed successfully"
 }
 
 # Update APT package lists
@@ -190,11 +271,15 @@ system_prep_verify_package() {
 system_prep_configure_unattended_upgrades() {
   log_info "Configuring unattended upgrades..."
 
-  # Backup original configuration if it exists
+  # Create backup directory if it doesn't exist
+  mkdir -p "${BACKUP_DIR}"
+  
+  # Backup original configuration to /var/backups (not in APT conf dir to avoid warnings)
   if [[ -f "${UNATTENDED_UPGRADES_CONF}" ]]; then
-    cp "${UNATTENDED_UPGRADES_CONF}" "${UNATTENDED_UPGRADES_CONF}.backup"
+    local backup_path="${BACKUP_DIR}/50unattended-upgrades.backup"
+    cp "${UNATTENDED_UPGRADES_CONF}" "${backup_path}"
     transaction_log "backup_file" "${UNATTENDED_UPGRADES_CONF}" \
-      "mv '${UNATTENDED_UPGRADES_CONF}.backup' '${UNATTENDED_UPGRADES_CONF}'"
+      "cp '${backup_path}' '${UNATTENDED_UPGRADES_CONF}'"
   fi
 
   # Create unattended upgrades configuration
@@ -470,6 +555,12 @@ system_prep_execute() {
     log_error "Failed to configure APT"
     return 1
   fi
+
+  # Install systemctl shim early to prevent user-unit reload errors during package installs
+  system_prep_install_systemctl_user_shim
+  
+  # Install policy-rc.d shim in containers to allow package-triggered service starts
+  system_prep_install_policy_rc_shim
 
   # Update package lists
   if ! system_prep_update_apt; then

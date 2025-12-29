@@ -11,8 +11,9 @@ set -euo pipefail
 readonly VERSION="1.0.0"
 readonly BUILD_DATE="2025-12-24"
 
-# Determine script location
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Determine script location (follow symlinks)
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_PATH}")" && pwd)"
 PROJECT_ROOT="$(dirname "${SCRIPT_DIR}")"
 
 # Source core libraries
@@ -660,10 +661,8 @@ main() {
   
   # Phase 2: Desktop Environment
   if [[ "${provisioning_failed}" == "false" ]] && ! should_skip_phase "desktop-env"; then
-    progress_start_phase "desktop-env"
     log_info "Phase 2: Desktop Environment Installation"
     if desktop_env_execute; then
-      progress_complete_phase "desktop-env"
       checkpoint_create "desktop-env"
     else
       log_error "Desktop environment installation failed"
@@ -690,10 +689,8 @@ main() {
   
   # Phase 4: RDP Server
   if [[ "${provisioning_failed}" == "false" ]] && ! should_skip_phase "rdp-server"; then
-    progress_start_phase "rdp-server"
     log_info "Phase 4: RDP Server Configuration"
     if rdp_server_execute; then
-      progress_complete_phase "rdp-server"
       checkpoint_create "rdp-server"
     else
       log_error "RDP server configuration failed"
@@ -747,10 +744,8 @@ main() {
   
   # Phase 8: Terminal Setup
   if [[ "${provisioning_failed}" == "false" ]] && ! should_skip_phase "terminal-setup"; then
-    progress_start_phase "terminal-setup"
     log_info "Phase 8: Terminal Setup"
     if terminal_setup_execute; then
-      progress_complete_phase "terminal-setup"
       checkpoint_create "terminal-setup"
     else
       log_warning "Terminal setup failed (non-critical)"
@@ -761,10 +756,8 @@ main() {
   
   # Phase 9: Development Tools
   if [[ "${provisioning_failed}" == "false" ]] && ! should_skip_phase "dev-tools"; then
-    progress_start_phase "dev-tools"
     log_info "Phase 9: Development Tools"
     if dev_tools_execute; then
-      progress_complete_phase "dev-tools"
       checkpoint_create "dev-tools"
     else
       log_warning "Development tools installation failed (non-critical)"
