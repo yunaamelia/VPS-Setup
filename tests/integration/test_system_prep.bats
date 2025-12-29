@@ -13,6 +13,7 @@ setup() {
   export APT_CUSTOM_CONF="${APT_CONF_DIR}/99vps-provision"
   export UNATTENDED_UPGRADES_CONF="${APT_CONF_DIR}/50unattended-upgrades"
   export SYSTEM_PREP_PHASE="system-prep"
+  export POLICY_RC_PATH="${BATS_TEST_TMPDIR}/policy-rc.d"
   export TEST_MODE=1
   
   mkdir -p "${CHECKPOINT_DIR}"
@@ -334,4 +335,35 @@ export -f checkpoint_create
   
   # Verify backup exists in correct location
   assert [ -f "${BACKUP_DIR}/50unattended-upgrades.backup" ]
+}
+
+@test "system_prep: install_policy_rc_shim creates shim in container" {
+  # Mock validator_is_container to return 0 (success)
+  validator_is_container() { return 0; }
+  export -f validator_is_container
+
+  # Mock transaction_log
+  transaction_log() { return 0; }
+  export -f transaction_log
+
+  run system_prep_install_policy_rc_shim
+  assert_success
+  
+  assert [ -f "${POLICY_RC_PATH}" ]
+  assert [ -x "${POLICY_RC_PATH}" ]
+  assert grep -q "exit 0" "${POLICY_RC_PATH}"
+}
+
+@test "system_prep: install_policy_rc_shim skips when not in container" {
+  # Mock validator_is_container to return 1 (failure)
+  validator_is_container() { return 1; }
+  export -f validator_is_container
+
+  # Ensure policy-rc.d doesn't exist
+  rm -f "${POLICY_RC_PATH}"
+
+  run system_prep_install_policy_rc_shim
+  assert_success
+  
+  assert [ ! -f "${POLICY_RC_PATH}" ]
 }

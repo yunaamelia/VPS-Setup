@@ -400,6 +400,47 @@ validator_check_system_load() {
   return 0
 }
 
+# Check if running inside a container (Docker, LXC, etc.)
+# Returns: 0 if in container, 1 if not
+validator_is_container() {
+  log_debug "Checking for container environment..."
+
+  # 1. Check for /.dockerenv
+  if [[ -f /.dockerenv ]]; then
+    log_debug "Detected Docker via /.dockerenv"
+    return 0
+  fi
+
+  # 2. Check for container environment variable
+  if [[ -n "${container:-}" ]]; then
+    log_debug "Detected container via \$container variable: ${container}"
+    return 0
+  fi
+
+  # 3. Check /proc/1/cgroup for docker/lxc/kubepods patterns
+  if [[ -f /proc/1/cgroup ]] && grep -qE "docker|lxc|kubepods" /proc/1/cgroup; then
+    log_debug "Detected container via /proc/1/cgroup"
+    return 0
+  fi
+
+  # 4. Check for /run/.containerenv (Podman)
+  if [[ -f /run/.containerenv ]]; then
+    log_debug "Detected Podman via /run/.containerenv"
+    return 0
+  fi
+
+  # 5. Use systemd-detect-virt if available
+  if command -v systemd-detect-virt &>/dev/null; then
+    if systemd-detect-virt --container --quiet; then
+      log_debug "Detected container via systemd-detect-virt"
+      return 0
+    fi
+  fi
+
+  log_debug "No container environment detected"
+  return 1
+}
+
 # Enhanced pre-flight check with resource validation
 # Args: $1 - min RAM GB, $2 - min disk GB
 # Returns: 0 if passed, 1 if failed

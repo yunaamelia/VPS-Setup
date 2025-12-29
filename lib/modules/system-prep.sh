@@ -32,6 +32,8 @@ source "${LIB_DIR}/core/checkpoint.sh"
 source "${LIB_DIR}/core/transaction.sh"
 # shellcheck disable=SC1091
 source "${LIB_DIR}/core/progress.sh"
+# shellcheck disable=SC1091
+source "${LIB_DIR}/core/validator.sh"
 
 # Module constants
 # Module constants
@@ -43,6 +45,9 @@ readonly UNATTENDED_UPGRADES_CONF="${UNATTENDED_UPGRADES_CONF:-${APT_CONF_DIR}/5
 readonly BACKUP_DIR="${BACKUP_DIR:-/var/backups/vps-provision}"
 readonly SSHD_CONFIG="${SSHD_CONFIG:-/etc/ssh/sshd_config}"
 readonly SSHD_CONFIG_BACKUP="${SSHD_CONFIG_BACKUP:-${SSHD_CONFIG}.bak}"
+readonly SYSTEMCTL_SHIM_PATH="/usr/bin/systemctl"
+readonly SYSTEMCTL_REAL_PATH="/usr/bin/systemctl.real"
+readonly POLICY_RC_PATH="${POLICY_RC_PATH:-/usr/sbin/policy-rc.d}"
 
 # Core packages required for provisioning
 readonly -a CORE_PACKAGES=(
@@ -124,6 +129,57 @@ EOF
   transaction_log "create_file" "${APT_CUSTOM_CONF}" "rm -f '${APT_CUSTOM_CONF}'"
   log_info "APT configuration created at ${APT_CUSTOM_CONF}"
   log_debug "APT configured with 3 parallel downloads and HTTP pipelining"
+}
+
+# Install a shim for systemctl --user to avoid noisy errors in containerized runs
+system_prep_install_systemctl_user_shim() {
+  if [[ -x "${SYSTEMCTL_SHIM_PATH}" && ! -x "${SYSTEMCTL_REAL_PATH}" ]]; then
+    mv "${SYSTEMCTL_SHIM_PATH}" "${SYSTEMCTL_REAL_PATH}"
+    transaction_log "move_file" "${SYSTEMCTL_SHIM_PATH}" "mv '${SYSTEMCTL_REAL_PATH}' '${SYSTEMCTL_SHIM_PATH}'"
+  fi
+
+  cat >"${SYSTEMCTL_SHIM_PATH}" <<'EOF'
+#!/bin/bash
+for arg in "$@"; do
+  if [[ "${arg}" == "--user" ]]; then
+    exit 0
+  fi
+  if [[ "${arg}" == *"pulseaudio"* ]]; then
+    exit 0
+  fi
+done
+exec /usr/bin/systemctl.real "$@"
+EOF
+
+  chmod +x "${SYSTEMCTL_SHIM_PATH}"
+  transaction_log "create_file" "${SYSTEMCTL_SHIM_PATH}" "rm -f '${SYSTEMCTL_SHIM_PATH}' && mv '${SYSTEMCTL_REAL_PATH}' '${SYSTEMCTL_SHIM_PATH}'"
+  log_info "Installed systemctl shim to bypass user service reloads in containers"
+}
+
+# Install a shim for policy-rc.d in container environments to allow service starts
+system_prep_install_policy_rc_shim() {
+  if ! validator_is_container; then
+    log_debug "Not running in a container, skipping policy-rc.d shim"
+    return 0
+  fi
+
+  if [[ -f "${POLICY_RC_PATH}" ]]; then
+    log_info "policy-rc.d already exists, skipping installation"
+    return 0
+  fi
+
+  log_info "Installing policy-rc.d shim to allow service execution in container"
+
+  cat >"${POLICY_RC_PATH}" <<'EOF'
+#!/bin/sh
+# policy-rc.d shim for VPS provisioning in container
+# Always returns 0 to allow service starts
+exit 0
+EOF
+
+  chmod +x "${POLICY_RC_PATH}"
+  transaction_log "create_file" "${POLICY_RC_PATH}" "rm -f '${POLICY_RC_PATH}'"
+  log_info "policy-rc.d shim installed successfully"
 }
 
 # Update APT package lists
@@ -521,6 +577,12 @@ system_prep_execute() {
     log_error "Failed to configure APT"
     return 1
   fi
+
+  # Install systemctl shim early to prevent user-unit reload errors during package installs
+  system_prep_install_systemctl_user_shim
+  
+  # Install policy-rc.d shim in containers to allow package-triggered service starts
+  system_prep_install_policy_rc_shim
 
   # Update package lists
   if ! system_prep_update_apt; then
